@@ -1,0 +1,37 @@
+{
+  "site": {
+    "title": "石头游戏",
+    "description": "免费畅玩您喜爱的网页游戏"
+  },
+  "nav": {
+    "home": "首页",
+    "games": "游戏",
+    "categories": "分类" 
+  },
+  "games": {
+    "play": "开始游戏",
+    "back": "返回游戏列表",
+    "fullscreen": "全屏模式",
+    "exitFullscreen": "退出全屏"
+  },
+  "categories": {
+    "all": "所有游戏",
+    "action": "动作游戏",
+    "puzzle": "益智游戏",
+    "adventure": "冒险游戏",
+    "strategy": "策略游戏",
+    "sports": "体育游戏"
+  },
+  "admin": {
+    "login": "管理员登录",
+    "dashboard": "控制面板",
+    "addGame": "添加游戏",
+    "editGame": "编辑游戏",
+    "deleteGame": "删除游戏",
+    "gameManagement": "游戏管理"
+  },
+  "language": {
+    "en": "English",
+    "zh": "中文"
+  }
+} 
