@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && cp _routes.json out/_routes.json",
     "start": "next start",
     "lint": "next lint"
   },
@@ -36,5 +36,17 @@
     "url": "https://github.com/peyoba/aistone-navigation-web"
   },
   "author": "peyoba",
-  "homepage": "https://aistone.org"
+  "homepage": "https://aistone.org",
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
 }

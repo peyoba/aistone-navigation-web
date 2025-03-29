@@ -1,5 +1,13 @@
 {
   "version": 1,
   "include": ["/*"],
-  "exclude": []
+  "exclude": [
+    "/build-manifest.json",
+    "/react-loadable-manifest.json",
+    "/_next/*"
+  ],
+  "rsc": {
+    "header": "RSC",
+    "include": ["/"]
+  }
 } 
