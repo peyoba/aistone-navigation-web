@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "xcopy /s /y public\\* out\\ && copy _routes.json out\\_routes.json",
+    "build": "mkdir -p out && cp -r public/* out/ && cp _routes.json out/_routes.json",
     "start": "next start",
     "lint": "next lint"
   },
