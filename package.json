@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "mkdir -p out && cp -r public/* out/ && cp _routes.json out/_routes.json",
+    "build:alt": "mkdir -p out && find public -type f -exec cp {} out/ \\; && cp _routes.json out/_routes.json",
     "start": "next start",
     "lint": "next lint"
   },
