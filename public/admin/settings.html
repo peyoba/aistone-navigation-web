@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网站设置 - AI Stone 游戏导航</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="main-header">
+    <h1 class="site-title">AI Stone 游戏导航 - 网站设置</h1>
+    <nav class="main-nav">
+      <a href="/">首页</a>
+      <a href="/favorites.html">收藏夹</a>
+      <a href="/admin/index.html" class="active">管理</a>
+      <button id="toggleLang">English</button>
+    </nav>
+  </header>
+
+  <div class="admin-container">
+    <!-- 登录检查提示 -->
+    <div id="loginAlert" class="alert alert-warning" style="display: none;">
+      您需要先登录才能访问此页面。<a href="/admin/index.html">前往登录</a>
+    </div>
+
+    <!-- 网站设置面板 -->
+    <div id="settingsPanel" class="admin-panel" style="display: none;">
+      <h2 class="admin-title">网站设置</h2>
+
+      <!-- 管理菜单 -->
+      <div class="admin-menu">
+        <div class="admin-menu-item active" data-target="generalSettings">
+          <i class="icon">🔧</i>
+          <span>基本设置</span>
+        </div>
+        <div class="admin-menu-item" data-target="appearanceSettings">
+          <i class="icon">🎨</i>
+          <span>外观设置</span>
+        </div>
+        <div class="admin-menu-item" data-target="statisticsSettings">
+          <i class="icon">📊</i>
+          <span>网站统计</span>
+        </div>
+      </div>
+
+      <!-- 提示信息区域 -->
+      <div id="alertContainer"></div>
+
+      <!-- 基本设置 -->
+      <div id="generalSettings" class="settings-section">
+        <h3 class="section-title">基本设置</h3>
+        <form id="generalSettingsForm" class="admin-form">
+          <div class="form-group">
+            <label for="siteTitleZh">网站标题（中文）</label>
+            <input type="text" id="siteTitleZh" class="form-control" value="AI Stone 游戏导航">
+          </div>
+          <div class="form-group">
+            <label for="siteTitleEn">网站标题（英文）</label>
+            <input type="text" id="siteTitleEn" class="form-control" value="AI Stone Game Navigation">
+          </div>
+          <div class="form-group">
+            <label for="siteDescriptionZh">网站描述（中文）</label>
+            <textarea id="siteDescriptionZh" class="form-control" rows="3">AI Stone 游戏导航是一个集合多种在线小游戏的导航网站，您可以在这里找到各种有趣的游戏。</textarea>
+          </div>
+          <div class="form-group">
+            <label for="siteDescriptionEn">网站描述（英文）</label>
+            <textarea id="siteDescriptionEn" class="form-control" rows="3">AI Stone Game Navigation is a website that collects various online games. You can find many interesting games here.</textarea>
+          </div>
+          <div class="form-group">
+            <label for="defaultLanguage">默认语言</label>
+            <select id="defaultLanguage" class="form-control">
+              <option value="zh">中文</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">保存设置</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 外观设置 -->
+      <div id="appearanceSettings" class="settings-section" style="display: none;">
+        <h3 class="section-title">外观设置</h3>
+        <form id="appearanceSettingsForm" class="admin-form">
+          <div class="form-group">
+            <label for="themeColor">主题颜色</label>
+            <input type="color" id="themeColor" class="form-control color-picker" value="#4a6ee0">
+            <div class="color-preview" style="background-color: #4a6ee0;"></div>
+          </div>
+          <div class="form-group">
+            <label for="headerStyle">顶部导航样式</label>
+            <select id="headerStyle" class="form-control">
+              <option value="default">默认样式</option>
+              <option value="fixed">固定顶部</option>
+              <option value="transparent">透明背景</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cardStyle">游戏卡片样式</label>
+            <select id="cardStyle" class="form-control">
+              <option value="default">默认样式</option>
+              <option value="rounded">圆角样式</option>
+              <option value="bordered">边框样式</option>
+              <option value="shadow">阴影样式</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">保存设置</button>
+            <button type="button" class="btn btn-secondary" id="resetAppearance">恢复默认</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- 网站统计 -->
+      <div id="statisticsSettings" class="settings-section" style="display: none;">
+        <h3 class="section-title">网站统计</h3>
+        
+        <div class="stats-dashboard">
+          <div class="stats-card">
+            <div class="stats-title">游戏总数</div>
+            <div class="stats-value" id="totalGames">0</div>
+            <div class="stats-icon">🎮</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-title">分类总数</div>
+            <div class="stats-value" id="totalCategories">0</div>
+            <div class="stats-icon">📁</div>
+          </div>
+          <div class="stats-card">
+            <div class="stats-title">用户收藏</div>
+            <div class="stats-value" id="totalFavorites">0</div>
+            <div class="stats-icon">⭐</div>
+          </div>
+        </div>
+        
+        <div class="stats-section">
+          <h4>受欢迎游戏排行</h4>
+          <div class="table-responsive">
+            <table class="admin-table" id="popularGamesTable">
+              <thead>
+                <tr>
+                  <th style="width: 10%">排名</th>
+                  <th style="width: 20%">游戏</th>
+                  <th style="width: 50%">名称</th>
+                  <th style="width: 20%">收藏数</th>
+                </tr>
+              </thead>
+              <tbody id="popularGamesTableBody">
+                <tr>
+                  <td colspan="4" class="loading">
+                    <div class="spinner"></div>
+                    <p>加载统计数据中...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 检查登录状态
+      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      
+      if (!isLoggedIn) {
+        // 未登录，显示警告
+        document.getElementById('loginAlert').style.display = 'block';
+      } else {
+        // 已登录，显示设置面板
+        document.getElementById('settingsPanel').style.display = 'block';
+      }
+      
+      // 初始化语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', toggleLanguage);
+      }
+      
+      // 初始化设置菜单切换
+      initSettingsMenu();
+      
+      // 加载设置数据
+      loadSettings();
+      
+      // 加载统计数据
+      loadStatistics();
+      
+      // 初始化表单提交事件
+      initForms();
+    });
+
+    /**
+     * 初始化设置菜单切换功能
+     */
+    function initSettingsMenu() {
+      // 获取所有菜单项
+      const menuItems = document.querySelectorAll('.admin-menu-item');
+      const settingsSections = document.querySelectorAll('.settings-section');
+      
+      // 为每个菜单项添加点击事件
+      menuItems.forEach(item => {
+        item.addEventListener('click', function() {
+          // 移除所有菜单项的激活状态
+          menuItems.forEach(i => i.classList.remove('active'));
+          
+          // 添加当前菜单项的激活状态
+          this.classList.add('active');
+          
+          // 获取目标设置区域
+          const targetId = this.dataset.target;
+          
+          // 隐藏所有设置区域
+          settingsSections.forEach(section => {
+            section.style.display = 'none';
+          });
+          
+          // 显示目标设置区域
+          const targetSection = document.getElementById(targetId);
+          if (targetSection) {
+            targetSection.style.display = 'block';
+          }
+        });
+      });
+    }
+
+    /**
+     * 加载设置数据
+     */
+    function loadSettings() {
+      try {
+        // 加载基本设置
+        loadGeneralSettings();
+        
+        // 加载外观设置
+        loadAppearanceSettings();
+      } catch (error) {
+        console.error('加载设置失败:', error);
+        showAlert('加载设置数据失败，请刷新页面重试。', 'danger');
+      }
+    }
+
+    /**
+     * 加载基本设置
+     */
+    function loadGeneralSettings() {
+      // 从本地存储获取设置
+      const settings = JSON.parse(localStorage.getItem('siteSettings') || '{}');
+      
+      // 填充表单字段
+      if (settings.siteTitle) {
+        document.getElementById('siteTitleZh').value = settings.siteTitle.zh || 'AI Stone 游戏导航';
+        document.getElementById('siteTitleEn').value = settings.siteTitle.en || 'AI Stone Game Navigation';
+      }
+      
+      if (settings.siteDescription) {
+        document.getElementById('siteDescriptionZh').value = settings.siteDescription.zh || 
+          'AI Stone 游戏导航是一个集合多种在线小游戏的导航网站，您可以在这里找到各种有趣的游戏。';
+        document.getElementById('siteDescriptionEn').value = settings.siteDescription.en || 
+          'AI Stone Game Navigation is a website that collects various online games. You can find many interesting games here.';
+      }
+      
+      if (settings.defaultLanguage) {
+        document.getElementById('defaultLanguage').value = settings.defaultLanguage;
+      }
+    }
+
+    /**
+     * 加载外观设置
+     */
+    function loadAppearanceSettings() {
+      // 从本地存储获取设置
+      const settings = JSON.parse(localStorage.getItem('siteSettings') || '{}');
+      
+      // 填充表单字段
+      if (settings.appearance) {
+        if (settings.appearance.themeColor) {
+          document.getElementById('themeColor').value = settings.appearance.themeColor;
+          document.querySelector('.color-preview').style.backgroundColor = settings.appearance.themeColor;
+        }
+        
+        if (settings.appearance.headerStyle) {
+          document.getElementById('headerStyle').value = settings.appearance.headerStyle;
+        }
+        
+        if (settings.appearance.cardStyle) {
+          document.getElementById('cardStyle').value = settings.appearance.cardStyle;
+        }
+      }
+      
+      // 为颜色选择器添加事件监听
+      document.getElementById('themeColor').addEventListener('input', function() {
+        document.querySelector('.color-preview').style.backgroundColor = this.value;
+      });
+      
+      // 为重置按钮添加事件监听
+      document.getElementById('resetAppearance').addEventListener('click', function() {
+        document.getElementById('themeColor').value = '#4a6ee0';
+        document.querySelector('.color-preview').style.backgroundColor = '#4a6ee0';
+        document.getElementById('headerStyle').value = 'default';
+        document.getElementById('cardStyle').value = 'default';
+      });
+    }
+
+    /**
+     * 初始化表单提交事件
+     */
+    function initForms() {
+      // 基本设置表单提交
+      document.getElementById('generalSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveGeneralSettings();
+      });
+      
+      // 外观设置表单提交
+      document.getElementById('appearanceSettingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveAppearanceSettings();
+      });
+    }
+
+    /**
+     * 保存基本设置
+     */
+    function saveGeneralSettings() {
+      try {
+        // 获取设置值
+        const siteTitleZh = document.getElementById('siteTitleZh').value;
+        const siteTitleEn = document.getElementById('siteTitleEn').value;
+        const siteDescriptionZh = document.getElementById('siteDescriptionZh').value;
+        const siteDescriptionEn = document.getElementById('siteDescriptionEn').value;
+        const defaultLanguage = document.getElementById('defaultLanguage').value;
+        
+        // 从本地存储获取现有设置
+        const settings = JSON.parse(localStorage.getItem('siteSettings') || '{}');
+        
+        // 更新设置
+        settings.siteTitle = {
+          zh: siteTitleZh,
+          en: siteTitleEn
+        };
+        
+        settings.siteDescription = {
+          zh: siteDescriptionZh,
+          en: siteDescriptionEn
+        };
+        
+        settings.defaultLanguage = defaultLanguage;
+        settings.lastUpdated = new Date().toISOString();
+        
+        // 保存到本地存储
+        localStorage.setItem('siteSettings', JSON.stringify(settings));
+        
+        // 应用设置到网站
+        applySettings(settings);
+        
+        // 显示成功消息
+        showAlert('基本设置已保存！', 'success');
+      } catch (error) {
+        console.error('保存设置失败:', error);
+        showAlert('保存设置失败。', 'danger');
+      }
+    }
+
+    /**
+     * 保存外观设置
+     */
+    function saveAppearanceSettings() {
+      try {
+        // 获取设置值
+        const themeColor = document.getElementById('themeColor').value;
+        const headerStyle = document.getElementById('headerStyle').value;
+        const cardStyle = document.getElementById('cardStyle').value;
+        
+        // 从本地存储获取现有设置
+        const settings = JSON.parse(localStorage.getItem('siteSettings') || '{}');
+        
+        // 确保appearance对象存在
+        if (!settings.appearance) {
+          settings.appearance = {};
+        }
+        
+        // 更新设置
+        settings.appearance.themeColor = themeColor;
+        settings.appearance.headerStyle = headerStyle;
+        settings.appearance.cardStyle = cardStyle;
+        settings.lastUpdated = new Date().toISOString();
+        
+        // 保存到本地存储
+        localStorage.setItem('siteSettings', JSON.stringify(settings));
+        
+        // 应用设置到网站
+        applySettings(settings);
+        
+        // 显示成功消息
+        showAlert('外观设置已保存！', 'success');
+      } catch (error) {
+        console.error('保存设置失败:', error);
+        showAlert('保存设置失败。', 'danger');
+      }
+    }
+
+    /**
+     * 应用设置到网站
+     * @param {Object} settings - 网站设置对象
+     */
+    function applySettings(settings) {
+      // 应用标题
+      if (settings.siteTitle) {
+        const currentLang = localStorage.getItem('locale') || 'zh';
+        document.title = settings.siteTitle[currentLang] || settings.siteTitle.zh;
+      }
+      
+      // 应用主题颜色
+      if (settings.appearance && settings.appearance.themeColor) {
+        document.documentElement.style.setProperty('--primary-color', settings.appearance.themeColor);
+      }
+    }
+
+    /**
+     * 加载统计数据
+     */
+    function loadStatistics() {
+      try {
+        // 加载游戏数据
+        let games = [];
+        if (window.gamesData && Array.isArray(window.gamesData)) {
+          games = window.gamesData;
+        }
+        
+        // 加载分类数据
+        let categories = [];
+        if (window.categoriesData && Array.isArray(window.categoriesData)) {
+          categories = window.categoriesData;
+        } else if (window.appData && window.appData.categories) {
+          categories = window.appData.categories;
+        }
+        
+        // 获取自定义分类
+        const customCategoriesStr = localStorage.getItem('customCategories');
+        const customCategories = customCategoriesStr ? JSON.parse(customCategoriesStr) : [];
+        
+        // 合并分类
+        categories = [...categories, ...customCategories];
+        
+        // 获取收藏数据
+        let favorites = [];
+        const favoritesStr = localStorage.getItem('favorites');
+        if (favoritesStr) {
+          favorites = JSON.parse(favoritesStr);
+        }
+        
+        // 更新游戏总数
+        document.getElementById('totalGames').textContent = games.length;
+        
+        // 更新分类总数
+        document.getElementById('totalCategories').textContent = categories.length;
+        
+        // 更新收藏总数
+        document.getElementById('totalFavorites').textContent = favorites.length;
+        
+        // 生成游戏收藏排行榜
+        generatePopularGamesTable(games, favorites);
+        
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+        showAlert('加载统计数据失败，请刷新页面重试。', 'danger');
+      }
+    }
+
+    /**
+     * 生成热门游戏表格
+     * @param {Array} games - 游戏数组
+     * @param {Array} favorites - 收藏数组
+     */
+    function generatePopularGamesTable(games, favorites) {
+      const tableBody = document.getElementById('popularGamesTableBody');
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 清空表格内容
+      tableBody.innerHTML = '';
+      
+      if (!games || games.length === 0) {
+        // 如果没有游戏，显示空消息
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+          <td colspan="4" style="text-align: center; padding: 30px;">
+            暂无游戏数据。
+          </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return;
+      }
+      
+      // 计算每个游戏的收藏次数
+      const gameFavoriteCounts = {};
+      games.forEach(game => {
+        gameFavoriteCounts[game.id] = 0;
+      });
+      
+      // 计算收藏次数
+      favorites.forEach(favoriteId => {
+        if (gameFavoriteCounts[favoriteId] !== undefined) {
+          gameFavoriteCounts[favoriteId]++;
+        }
+      });
+      
+      // 按收藏次数排序
+      const sortedGames = [...games].sort((a, b) => {
+        return gameFavoriteCounts[b.id] - gameFavoriteCounts[a.id];
+      });
+      
+      // 只显示前10个
+      const topGames = sortedGames.slice(0, 10);
+      
+      // 生成表格行
+      topGames.forEach((game, index) => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>
+            <img src="${game.thumbnail || '/images/placeholder.jpg'}" alt="${game.title[currentLang] || game.title.en}" class="game-thumbnail">
+          </td>
+          <td>${game.title[currentLang] || game.title.en}</td>
+          <td>${gameFavoriteCounts[game.id]}</td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+    }
+
+    /**
+     * 显示提醒消息
+     * @param {string} message - 消息文本
+     * @param {string} type - 消息类型 (success, danger, warning, info)
+     */
+    function showAlert(message, type) {
+      const alertContainer = document.getElementById('alertContainer');
+      
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // 添加关闭按钮
+      const closeBtn = document.createElement('span');
+      closeBtn.style.float = 'right';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function() {
+        alert.remove();
+      });
+      
+      alert.appendChild(closeBtn);
+      alertContainer.prepend(alert);
+      
+      // 5秒后自动关闭
+      setTimeout(function() {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, 5000);
+    }
+
+    /**
+     * 切换界面语言
+     */
+    function toggleLanguage() {
+      // 获取当前语言
+      let currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 切换语言
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('locale', currentLang);
+      
+      // 更新按钮文本
+      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
+      
+      // 刷新页面显示
+      loadStatistics();
+      updateUIText();
+    }
+
+    /**
+     * 更新界面文本
+     */
+    function updateUIText() {
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      const translations = {
+        zh: {
+          'settings.title': 'AI Stone 游戏导航 - 网站设置',
+          'settings.heading': '网站设置',
+          'settings.general': '基本设置',
+          'settings.appearance': '外观设置',
+          'settings.statistics': '网站统计',
+          'settings.save': '保存设置',
+          'settings.reset': '恢复默认',
+          'stats.games': '游戏总数',
+          'stats.categories': '分类总数',
+          'stats.favorites': '用户收藏',
+          'stats.popular': '受欢迎游戏排行',
+          'stats.rank': '排名',
+          'stats.game': '游戏',
+          'stats.name': '名称',
+          'stats.favCount': '收藏数',
+          'nav.home': '首页',
+          'nav.favorites': '收藏夹',
+          'nav.admin': '管理'
+        },
+        en: {
+          'settings.title': 'AI Stone Game Navigation - Website Settings',
+          'settings.heading': 'Website Settings',
+          'settings.general': 'General Settings',
+          'settings.appearance': 'Appearance Settings',
+          'settings.statistics': 'Website Statistics',
+          'settings.save': 'Save Settings',
+          'settings.reset': 'Reset to Default',
+          'stats.games': 'Total Games',
+          'stats.categories': 'Total Categories',
+          'stats.favorites': 'User Favorites',
+          'stats.popular': 'Popular Games Ranking',
+          'stats.rank': 'Rank',
+          'stats.game': 'Game',
+          'stats.name': 'Name',
+          'stats.favCount': 'Favorites',
+          'nav.home': 'Home',
+          'nav.favorites': 'Favorites',
+          'nav.admin': 'Admin'
+        }
+      };
+      
+      // 设置页面标题
+      document.title = translations[currentLang]['settings.title'];
+      document.querySelector('.site-title').textContent = translations[currentLang]['settings.title'];
+      
+      // 更新导航链接
+      const navLinks = document.querySelectorAll('.main-nav a');
+      navLinks[0].textContent = translations[currentLang]['nav.home'];
+      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
+      navLinks[2].textContent = translations[currentLang]['nav.admin'];
+      
+      // 更新设置标题
+      document.querySelector('.admin-title').textContent = translations[currentLang]['settings.heading'];
+      
+      // 更新菜单项
+      const menuItems = document.querySelectorAll('.admin-menu-item span');
+      menuItems[0].textContent = translations[currentLang]['settings.general'];
+      menuItems[1].textContent = translations[currentLang]['settings.appearance'];
+      menuItems[2].textContent = translations[currentLang]['settings.statistics'];
+      
+      // 更新区域标题
+      document.querySelectorAll('.section-title')[0].textContent = translations[currentLang]['settings.general'];
+      document.querySelectorAll('.section-title')[1].textContent = translations[currentLang]['settings.appearance'];
+      document.querySelectorAll('.section-title')[2].textContent = translations[currentLang]['settings.statistics'];
+      
+      // 更新按钮文本
+      document.querySelectorAll('.btn-primary').forEach(btn => {
+        if (btn.type === 'submit') {
+          btn.textContent = translations[currentLang]['settings.save'];
+        }
+      });
+      
+      document.getElementById('resetAppearance').textContent = translations[currentLang]['settings.reset'];
+      
+      // 更新统计卡片标题
+      document.querySelectorAll('.stats-title')[0].textContent = translations[currentLang]['stats.games'];
+      document.querySelectorAll('.stats-title')[1].textContent = translations[currentLang]['stats.categories'];
+      document.querySelectorAll('.stats-title')[2].textContent = translations[currentLang]['stats.favorites'];
+      
+      // 更新统计表格标题
+      document.querySelector('.stats-section h4').textContent = translations[currentLang]['stats.popular'];
+      
+      // 更新表格列标题
+      const tableHeaders = document.querySelectorAll('#popularGamesTable th');
+      tableHeaders[0].textContent = translations[currentLang]['stats.rank'];
+      tableHeaders[1].textContent = translations[currentLang]['stats.game'];
+      tableHeaders[2].textContent = translations[currentLang]['stats.name'];
+      tableHeaders[3].textContent = translations[currentLang]['stats.favCount'];
+    }
+  </script>
+</body>
+</html> 
