@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分类管理 - AI Stone 游戏导航</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="main-header">
+    <h1 class="site-title">AI Stone 游戏导航 - 分类管理</h1>
+    <nav class="main-nav">
+      <a href="/">首页</a>
+      <a href="/favorites.html">收藏夹</a>
+      <a href="/admin/index.html" class="active">管理</a>
+      <button id="toggleLang">English</button>
+    </nav>
+  </header>
+
+  <div class="admin-container">
+    <!-- 登录检查提示 -->
+    <div id="loginAlert" class="alert alert-warning" style="display: none;">
+      您需要先登录才能访问此页面。<a href="/admin/index.html">前往登录</a>
+    </div>
+
+    <!-- 分类管理面板 -->
+    <div id="categoriesPanel" class="admin-panel" style="display: none;">
+      <h2 class="admin-title">分类管理</h2>
+
+      <!-- 操作栏 -->
+      <div class="admin-actions">
+        <div class="search-box">
+          <input type="text" id="searchCategories" class="form-control" placeholder="搜索分类...">
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="openAddModal()">添加分类</button>
+        </div>
+      </div>
+
+      <!-- 提示信息区域 -->
+      <div id="alertContainer"></div>
+
+      <!-- 分类列表 -->
+      <div class="categories-table-container">
+        <table class="admin-table" id="categoriesTable">
+          <thead>
+            <tr>
+              <th style="width: 10%">ID</th>
+              <th style="width: 25%">中文名称</th>
+              <th style="width: 25%">英文名称</th>
+              <th style="width: 20%">游戏数量</th>
+              <th style="width: 20%">操作</th>
+            </tr>
+          </thead>
+          <tbody id="categoriesTableBody">
+            <!-- 分类列表将通过JS动态加载 -->
+            <tr>
+              <td colspan="5" class="loading">
+                <div class="spinner"></div>
+                <p>加载分类数据中...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 添加/编辑分类对话框 -->
+    <div id="categoryModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">添加分类</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="categoryForm" class="admin-form">
+            <input type="hidden" id="categoryId">
+
+            <div class="form-group">
+              <label for="categoryNameZh">分类名称（中文）</label>
+              <input type="text" id="categoryNameZh" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="categoryNameEn">分类名称（英文）</label>
+              <input type="text" id="categoryNameEn" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="categoryDesc">分类描述（可选）</label>
+              <textarea id="categoryDesc" class="form-control"></textarea>
+            </div>
+
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary">保存</button>
+              <button type="button" class="btn btn-secondary close-modal">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除确认对话框 -->
+    <div id="deleteConfirmModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>确认删除</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>您确定要删除分类 "<span id="deleteCategoryName"></span>" 吗？此操作不可撤销。</p>
+          <div class="form-group">
+            <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            <button class="btn btn-secondary close-modal">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 检查登录状态
+      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      
+      if (!isLoggedIn) {
+        // 未登录，显示警告
+        document.getElementById('loginAlert').style.display = 'block';
+      } else {
+        // 已登录，显示分类管理面板
+        document.getElementById('categoriesPanel').style.display = 'block';
+        
+        // 加载分类数据
+        loadCategoriesList();
+        
+        // 初始化搜索功能
+        initSearch();
+        
+        // 初始化模态框
+        initModals();
+      }
+      
+      // 初始化语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', toggleLanguage);
+      }
+    });
+
+    /**
+     * 加载分类列表
+     */
+    function loadCategoriesList() {
+      try {
+        // 获取分类数据
+        let categories = [];
+        if (window.categoriesData && Array.isArray(window.categoriesData)) {
+          categories = window.categoriesData;
+        } else if (window.appData && window.appData.categories) {
+          categories = window.appData.categories;
+        }
+
+        // 获取自定义分类
+        const customCategoriesStr = localStorage.getItem('customCategories');
+        const customCategories = customCategoriesStr ? JSON.parse(customCategoriesStr) : [];
+
+        // 合并所有分类数据
+        categories = [...categories, ...customCategories];
+
+        // 渲染分类表格
+        renderCategoriesTable(categories);
+      } catch (error) {
+        console.error('加载分类列表失败:', error);
+        showAlert('加载分类数据失败，请刷新页面重试。', 'danger');
+      }
+    }
+
+    /**
+     * 渲染分类表格
+     * @param {Array} categories - 分类数据数组
+     */
+    function renderCategoriesTable(categories) {
+      const tableBody = document.getElementById('categoriesTableBody');
+      const currentLang = localStorage.getItem('locale') || 'zh';
+
+      // 清空表格内容
+      tableBody.innerHTML = '';
+
+      if (!categories || categories.length === 0) {
+        // 如果没有分类，显示空消息
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+          <td colspan="5" style="text-align: center; padding: 30px;">
+            暂无分类数据。点击"添加分类"按钮创建新分类。
+          </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return;
+      }
+
+      // 计算每个分类下的游戏数量
+      const categoryGameCounts = {};
+      if (window.gamesData) {
+        window.gamesData.forEach(game => {
+          if (game.category) {
+            categoryGameCounts[game.category] = (categoryGameCounts[game.category] || 0) + 1;
+          }
+        });
+      }
+
+      // 为每个分类创建表格行
+      categories.forEach((category, index) => {
+        const row = document.createElement('tr');
+        row.dataset.categoryId = category.id;
+
+        // 判断是否为自定义分类
+        const isCustomCategory = !!(localStorage.getItem('customCategories') &&
+          JSON.parse(localStorage.getItem('customCategories')).find(c => c.id === category.id));
+
+        row.innerHTML = `
+          <td>${category.id}</td>
+          <td>${category.name.zh || '-'}</td>
+          <td>${category.name.en || '-'}</td>
+          <td>${categoryGameCounts[category.id] || 0}</td>
+          <td class="table-actions">
+            ${isCustomCategory ? `
+              <button class="btn btn-primary btn-sm edit-category" data-id="${category.id}" title="编辑分类">✏️</button>
+              <button class="btn btn-danger btn-sm delete-category" data-id="${category.id}" title="删除分类">🗑️</button>
+            ` : `
+              <button class="btn btn-secondary btn-sm" disabled title="内置分类无法修改">🔒</button>
+            `}
+          </td>
+        `;
+
+        tableBody.appendChild(row);
+      });
+
+      // 为按钮添加事件监听器
+      addTableButtonListeners();
+    }
+
+    /**
+     * 为表格中的按钮添加事件监听器
+     */
+    function addTableButtonListeners() {
+      // 编辑分类按钮
+      document.querySelectorAll('.edit-category').forEach(button => {
+        button.addEventListener('click', function() {
+          const categoryId = this.dataset.id;
+          openEditModal(categoryId);
+        });
+      });
+
+      // 删除分类按钮
+      document.querySelectorAll('.delete-category').forEach(button => {
+        button.addEventListener('click', function() {
+          const categoryId = this.dataset.id;
+          openDeleteModal(categoryId);
+        });
+      });
+    }
+
+    /**
+     * 初始化搜索功能
+     */
+    function initSearch() {
+      const searchInput = document.getElementById('searchCategories');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          const searchTerm = this.value.toLowerCase();
+          filterCategories(searchTerm);
+        });
+      }
+    }
+
+    /**
+     * 根据搜索词过滤分类
+     * @param {string} searchTerm - 搜索词
+     */
+    function filterCategories(searchTerm) {
+      const rows = document.querySelectorAll('#categoriesTableBody tr');
+      
+      rows.forEach(row => {
+        const categoryNameZh = row.cells[1]?.textContent.toLowerCase() || '';
+        const categoryNameEn = row.cells[2]?.textContent.toLowerCase() || '';
+        
+        if (categoryNameZh.includes(searchTerm) || categoryNameEn.includes(searchTerm)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    /**
+     * 初始化模态框
+     */
+    function initModals() {
+      // 获取所有模态框
+      const modals = document.querySelectorAll('.modal');
+      
+      modals.forEach(modal => {
+        // 关闭按钮事件
+        const closeButtons = modal.querySelectorAll('.close-modal');
+        closeButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            modal.style.display = 'none';
+          });
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+          if (event.target === modal) {
+            modal.style.display = 'none';
+          }
+        });
+      });
+
+      // 分类表单提交事件
+      const form = document.getElementById('categoryForm');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveCategory();
+      });
+    }
+
+    /**
+     * 打开添加分类对话框
+     */
+    function openAddModal() {
+      // 重置表单
+      document.getElementById('categoryForm').reset();
+      document.getElementById('categoryId').value = '';
+      document.getElementById('modalTitle').textContent = '添加分类';
+
+      // 显示对话框
+      document.getElementById('categoryModal').style.display = 'block';
+    }
+
+    /**
+     * 打开编辑分类对话框
+     * @param {string} categoryId - 分类ID
+     */
+    function openEditModal(categoryId) {
+      // 获取分类数据
+      const customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+      const category = customCategories.find(c => c.id === categoryId);
+
+      if (!category) {
+        showAlert('未找到分类数据', 'danger');
+        return;
+      }
+
+      // 填充表单
+      document.getElementById('categoryId').value = category.id;
+      document.getElementById('categoryNameZh').value = category.name.zh || '';
+      document.getElementById('categoryNameEn').value = category.name.en || '';
+      document.getElementById('categoryDesc').value = category.description || '';
+      document.getElementById('modalTitle').textContent = '编辑分类';
+
+      // 显示对话框
+      document.getElementById('categoryModal').style.display = 'block';
+    }
+
+    /**
+     * 保存分类
+     */
+    function saveCategory() {
+      try {
+        const categoryId = document.getElementById('categoryId').value;
+        const isNewCategory = !categoryId;
+
+        // 准备分类数据
+        const categoryData = {
+          id: isNewCategory ? generateUniqueId() : categoryId,
+          name: {
+            zh: document.getElementById('categoryNameZh').value,
+            en: document.getElementById('categoryNameEn').value
+          },
+          description: document.getElementById('categoryDesc').value,
+          dateModified: new Date().toISOString()
+        };
+
+        // 获取现有自定义分类
+        const customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+
+        if (isNewCategory) {
+          // 添加新分类
+          categoryData.dateAdded = new Date().toISOString();
+          customCategories.push(categoryData);
+        } else {
+          // 更新现有分类
+          const index = customCategories.findIndex(c => c.id === categoryId);
+          if (index === -1) {
+            throw new Error('分类不存在');
+          }
+          customCategories[index] = {
+            ...customCategories[index],
+            ...categoryData
+          };
+        }
+
+        // 保存到本地存储
+        localStorage.setItem('customCategories', JSON.stringify(customCategories));
+
+        // 关闭对话框
+        document.getElementById('categoryModal').style.display = 'none';
+
+        // 刷新分类列表
+        loadCategoriesList();
+
+        // 显示成功消息
+        showAlert(isNewCategory ? '分类添加成功！' : '分类更新成功！', 'success');
+      } catch (error) {
+        console.error('保存分类失败:', error);
+        showAlert('保存分类失败。', 'danger');
+      }
+    }
+
+    /**
+     * 打开删除确认对话框
+     * @param {string} categoryId - 分类ID
+     */
+    function openDeleteModal(categoryId) {
+      // 获取分类数据
+      const customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+      const category = customCategories.find(c => c.id === categoryId);
+
+      if (!category) {
+        showAlert('未找到分类数据', 'danger');
+        return;
+      }
+
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 设置分类名称
+      document.getElementById('deleteCategoryName').textContent = category.name[currentLang] || category.name.en;
+      
+      // 设置确认按钮的分类ID
+      document.getElementById('confirmDeleteBtn').dataset.categoryId = categoryId;
+      
+      // 显示对话框
+      document.getElementById('deleteConfirmModal').style.display = 'block';
+
+      // 添加删除确认事件
+      document.getElementById('confirmDeleteBtn').onclick = function() {
+        deleteCategory(this.dataset.categoryId);
+      };
+    }
+
+    /**
+     * 删除分类
+     * @param {string} categoryId - 分类ID
+     */
+    function deleteCategory(categoryId) {
+      try {
+        // 获取自定义分类列表
+        const customCategories = JSON.parse(localStorage.getItem('customCategories') || '[]');
+        
+        // 查找要删除的分类索引
+        const categoryIndex = customCategories.findIndex(c => c.id === categoryId);
+        
+        if (categoryIndex === -1) {
+          showAlert('未找到要删除的分类', 'danger');
+          return;
+        }
+
+        // 检查是否有游戏使用此分类
+        const gamesUsingCategory = window.gamesData?.filter(game => game.category === categoryId) || [];
+        if (gamesUsingCategory.length > 0) {
+          showAlert(`无法删除此分类，因为还有 ${gamesUsingCategory.length} 个游戏正在使用它。`, 'warning');
+          document.getElementById('deleteConfirmModal').style.display = 'none';
+          return;
+        }
+        
+        // 删除分类
+        customCategories.splice(categoryIndex, 1);
+        
+        // 保存回本地存储
+        localStorage.setItem('customCategories', JSON.stringify(customCategories));
+        
+        // 关闭对话框
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+        
+        // 刷新分类列表
+        loadCategoriesList();
+        
+        // 显示成功消息
+        showAlert('分类已成功删除！', 'success');
+      } catch (error) {
+        console.error('删除分类失败:', error);
+        showAlert('删除分类失败。', 'danger');
+      }
+    }
+
+    /**
+     * 生成唯一ID
+     * @returns {string} 唯一ID
+     */
+    function generateUniqueId() {
+      return 'category_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    /**
+     * 显示提醒消息
+     * @param {string} message - 消息文本
+     * @param {string} type - 消息类型 (success, danger, warning, info)
+     */
+    function showAlert(message, type) {
+      const alertContainer = document.getElementById('alertContainer');
+      
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // 添加关闭按钮
+      const closeBtn = document.createElement('span');
+      closeBtn.style.float = 'right';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function() {
+        alert.remove();
+      });
+      
+      alert.appendChild(closeBtn);
+      alertContainer.prepend(alert);
+      
+      // 5秒后自动关闭
+      setTimeout(function() {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, 5000);
+    }
+
+    /**
+     * 切换界面语言
+     */
+    function toggleLanguage() {
+      // 获取当前语言
+      let currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 切换语言
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('locale', currentLang);
+      
+      // 更新按钮文本
+      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
+      
+      // 刷新页面显示
+      loadCategoriesList();
+      updateUIText();
+    }
+
+    /**
+     * 更新界面文本
+     */
+    function updateUIText() {
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      const translations = {
+        zh: {
+          'categories.title': 'AI Stone 游戏导航 - 分类管理',
+          'categories.heading': '分类管理',
+          'categories.search': '搜索分类...',
+          'categories.add': '添加分类',
+          'categories.loading': '加载分类数据中...',
+          'categories.empty': '暂无分类数据。',
+          'categories.click.add': '点击"添加分类"按钮创建新分类。',
+          'categories.action.edit': '编辑分类',
+          'categories.action.delete': '删除分类',
+          'categories.builtin': '内置分类无法修改',
+          'categories.edit.title': '编辑分类',
+          'categories.add.title': '添加分类',
+          'categories.save': '保存',
+          'categories.cancel': '取消',
+          'categories.delete.confirm': '确认删除',
+          'categories.delete.message': '您确定要删除分类 "',
+          'categories.delete.message2': '" 吗？此操作不可撤销。',
+          'categories.confirm.delete': '确认删除',
+          'nav.home': '首页',
+          'nav.favorites': '收藏夹',
+          'nav.admin': '管理'
+        },
+        en: {
+          'categories.title': 'AI Stone Game Navigation - Category Management',
+          'categories.heading': 'Category Management',
+          'categories.search': 'Search categories...',
+          'categories.add': 'Add Category',
+          'categories.loading': 'Loading category data...',
+          'categories.empty': 'No categories available.',
+          'categories.click.add': 'Click "Add Category" button to create a new category.',
+          'categories.action.edit': 'Edit Category',
+          'categories.action.delete': 'Delete Category',
+          'categories.builtin': 'Built-in category cannot be modified',
+          'categories.edit.title': 'Edit Category',
+          'categories.add.title': 'Add Category',
+          'categories.save': 'Save',
+          'categories.cancel': 'Cancel',
+          'categories.delete.confirm': 'Confirm Deletion',
+          'categories.delete.message': 'Are you sure you want to delete the category "',
+          'categories.delete.message2': '"? This action cannot be undone.',
+          'categories.confirm.delete': 'Confirm Delete',
+          'nav.home': 'Home',
+          'nav.favorites': 'Favorites',
+          'nav.admin': 'Admin'
+        }
+      };
+      
+      // 设置页面标题
+      document.title = translations[currentLang]['categories.title'];
+      document.querySelector('.site-title').textContent = translations[currentLang]['categories.title'];
+      
+      // 更新导航链接
+      const navLinks = document.querySelectorAll('.main-nav a');
+      navLinks[0].textContent = translations[currentLang]['nav.home'];
+      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
+      navLinks[2].textContent = translations[currentLang]['nav.admin'];
+      
+      // 更新页面标题
+      document.querySelector('.admin-title').textContent = translations[currentLang]['categories.heading'];
+      
+      // 更新搜索框占位符
+      document.getElementById('searchCategories').placeholder = translations[currentLang]['categories.search'];
+      
+      // 更新添加分类按钮
+      document.querySelector('.action-buttons .btn-primary').textContent = 
+        translations[currentLang]['categories.add'];
+        
+      // 更新对话框文本
+      if (document.querySelector('#categoryModal .modal-header h3')) {
+        document.querySelector('#categoryModal .modal-header h3').textContent = 
+          document.getElementById('categoryId').value ? 
+          translations[currentLang]['categories.edit.title'] : 
+          translations[currentLang]['categories.add.title'];
+      }
+      
+      if (document.querySelector('#categoryForm .btn-primary')) {
+        document.querySelector('#categoryForm .btn-primary').textContent = 
+          translations[currentLang]['categories.save'];
+      }
+      
+      if (document.querySelector('#categoryForm .btn-secondary')) {
+        document.querySelector('#categoryForm .btn-secondary').textContent = 
+          translations[currentLang]['categories.cancel'];
+      }
+      
+      // 更新删除确认对话框
+      if (document.querySelector('#deleteConfirmModal .modal-header h3')) {
+        document.querySelector('#deleteConfirmModal .modal-header h3').textContent = 
+          translations[currentLang]['categories.delete.confirm'];
+      }
+      
+      const deleteMessageParts = document.querySelector('#deleteConfirmModal .modal-body p');
+      if (deleteMessageParts) {
+        deleteMessageParts.innerHTML = 
+          translations[currentLang]['categories.delete.message'] + 
+          `<span id="deleteCategoryName"></span>` + 
+          translations[currentLang]['categories.delete.message2'];
+      }
+      
+      if (document.querySelector('#confirmDeleteBtn')) {
+        document.querySelector('#confirmDeleteBtn').textContent = 
+          translations[currentLang]['categories.confirm.delete'];
+      }
+      
+      if (document.querySelector('#deleteConfirmModal .btn-secondary')) {
+        document.querySelector('#deleteConfirmModal .btn-secondary').textContent = 
+          translations[currentLang]['categories.cancel'];
+      }
+    }
+  </script>
+</body>
+</html> 
