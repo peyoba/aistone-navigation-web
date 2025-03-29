@@ -26,7 +26,7 @@ export const useTranslation = (locale: string, translations: Record<string, any>
 };
 
 // 获取翻译数据
-export const getTranslations = async (locale: string = 'en') => {
+export const getTranslations = async (locale: string = 'en'): Promise<Record<string, any>> => {
   // 在实际应用中，这会是一个API调用或直接导入
   try {
     const translations = await import(`../../public/locales/${locale}/common.json`);
