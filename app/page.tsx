@@ -6,13 +6,14 @@ import Layout from './components/layout/Layout';
 import GameGrid from './components/games/GameGrid';
 import { Game } from './data/games';
 import { getTranslations, useTranslation } from './utils/i18n';
-import { getGames } from './utils/dataService';
+import { getGames, addDataChangeListener } from './utils/dataService';
 
 export default function HomePage() {
   const router = useRouter();
   const [locale, setLocale] = useState('en');
   const [translations, setTranslations] = useState<Record<string, any>>({});
   const [games, setGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { t } = useTranslation(locale, translations);
   
   // 在客户端加载时获取当前语言和游戏数据
@@ -23,35 +24,47 @@ export default function HomePage() {
     
     // 加载翻译
     const loadTranslations = async () => {
-      const trans = await getTranslations(savedLocale);
-      setTranslations(trans);
+      setIsLoading(true);
+      try {
+        const trans = await getTranslations(savedLocale);
+        setTranslations(trans);
+      } catch (error) {
+        console.error('Error loading translations:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
     // 加载游戏数据
     const loadGames = () => {
-      const gamesData = getGames();
-      setGames(gamesData);
+      try {
+        console.log('Loading games from data service...');
+        const gamesData = getGames();
+        console.log(`Loaded ${gamesData.length} games, filtering active games only`);
+        
+        // 只显示激活的游戏
+        const activeGames = gamesData.filter(game => game.active);
+        console.log(`Found ${activeGames.length} active games`);
+        
+        setGames(activeGames);
+      } catch (error) {
+        console.error('Error loading games:', error);
+      }
     };
     
     loadTranslations();
     loadGames();
 
-    // 添加存储事件监听器，当localStorage变化时重新加载游戏数据
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'stone_games_data') {
-        loadGames();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
+    // 使用增强的数据变化监听
+    const cleanup = addDataChangeListener(() => {
+      console.log('Data change detected, reloading games...');
+      loadGames();
+    });
     
-    // 返回清理函数
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    return cleanup;
   }, []);
   
-  if (!translations || Object.keys(translations).length === 0) {
+  if (isLoading || !translations || Object.keys(translations).length === 0) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
   
@@ -63,7 +76,15 @@ export default function HomePage() {
           <p className="text-xl">{t('site.description')}</p>
         </div>
         
-        <GameGrid games={games} locale={locale} t={t} />
+        {games.length === 0 ? (
+          <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-600">
+            {locale === 'en' 
+              ? 'No active games found. Please add some games in the admin panel.' 
+              : '没有找到激活的游戏。请在管理员面板中添加一些游戏。'}
+          </div>
+        ) : (
+          <GameGrid games={games} locale={locale} t={t} />
+        )}
       </div>
     </Layout>
   );

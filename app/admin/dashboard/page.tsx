@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Game, Category } from '../../data/games';
 import { getTranslations, useTranslation } from '../../utils/i18n';
 import { getGames, getCategories, updateGameStatus } from '../../utils/dataService';
+import SyncStatusPanel from '../../components/admin/SyncStatusPanel';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -54,19 +55,13 @@ export default function AdminDashboardPage() {
   const toggleGameStatus = (gameId: string) => {
     const game = games.find(g => g.id === gameId);
     if (game) {
-      const updatedGames = updateGameStatus(gameId, !game.active);
-      setGames(updatedGames);
-      
-      // 手动触发一个storage事件，以便首页能够感知到数据变化
       try {
-        const event = new StorageEvent('storage', {
-          key: 'stone_games_data',
-          newValue: JSON.stringify(updatedGames),
-          url: window.location.href
-        });
-        window.dispatchEvent(event);
+        console.log(`Toggling game status for ${gameId} from ${game.active} to ${!game.active}`);
+        const updatedGames = updateGameStatus(gameId, !game.active);
+        console.log('Game status updated successfully');
+        setGames(updatedGames);
       } catch (error) {
-        console.error('Failed to dispatch storage event:', error);
+        console.error('Error updating game status:', error);
       }
     }
   };
@@ -97,6 +92,8 @@ export default function AdminDashboardPage() {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
+        <SyncStatusPanel locale={locale} />
+        
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">{t('admin.gameManagement')}</h1>
           
