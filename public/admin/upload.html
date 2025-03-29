@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传游戏 - AI Stone 游戏导航</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="main-header">
+    <h1 class="site-title">AI Stone 游戏导航 - 上传游戏</h1>
+    <nav class="main-nav">
+      <a href="/">首页</a>
+      <a href="/favorites.html">收藏夹</a>
+      <a href="/admin/index.html" class="active">管理</a>
+      <button id="toggleLang">English</button>
+    </nav>
+  </header>
+  
+  <div class="admin-container">
+    <!-- 登录检查提示 -->
+    <div id="loginAlert" class="alert alert-warning" style="display: none;">
+      您需要先登录才能访问此页面。<a href="/admin/index.html">前往登录</a>
+    </div>
+    
+    <!-- 上传表单 -->
+    <div id="uploadPanel" class="admin-panel" style="display: none;">
+      <h2 class="admin-title">上传新游戏</h2>
+      
+      <div id="alertContainer"></div>
+      
+      <form id="uploadForm" class="admin-form">
+        <!-- 游戏基本信息 -->
+        <div class="form-group">
+          <label for="gameTitle">游戏标题（中文）</label>
+          <input type="text" id="gameTitle" class="form-control" required>
+          <span class="form-hint">输入游戏的中文标题</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="gameTitleEn">游戏标题（英文）</label>
+          <input type="text" id="gameTitleEn" class="form-control" required>
+          <span class="form-hint">输入游戏的英文标题</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="gameDescription">游戏描述（中文）</label>
+          <textarea id="gameDescription" class="form-control" required></textarea>
+          <span class="form-hint">简要描述游戏内容和玩法</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="gameDescriptionEn">游戏描述（英文）</label>
+          <textarea id="gameDescriptionEn" class="form-control" required></textarea>
+          <span class="form-hint">游戏描述的英文版本</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="gameCategory">游戏分类</label>
+          <select id="gameCategory" class="form-control" required>
+            <option value="">-- 选择分类 --</option>
+            <option value="all">所有游戏</option>
+            <option value="action">动作游戏</option>
+            <option value="puzzle">益智游戏</option>
+            <option value="strategy">策略游戏</option>
+          </select>
+          <span class="form-hint">选择最合适的游戏分类</span>
+        </div>
+        
+        <!-- 游戏链接 -->
+        <div class="form-group">
+          <label for="gameUrl">游戏链接 (iframe URL)</label>
+          <input type="url" id="gameUrl" class="form-control" required>
+          <span class="form-hint">输入可以通过iframe嵌入的游戏URL，推荐使用https链接</span>
+        </div>
+        
+        <!-- 游戏缩略图上传 -->
+        <div class="form-group">
+          <label>游戏缩略图</label>
+          <div id="thumbnailUpload" class="upload-area">
+            <div class="upload-icon">📷</div>
+            <p class="upload-text">点击或拖拽图片到此处上传</p>
+            <p class="form-hint">推荐尺寸：300×200px，PNG或JPG格式</p>
+            <input type="file" id="thumbnailInput" class="file-input" accept="image/*">
+          </div>
+          <div id="thumbnailPreview" class="preview-container"></div>
+        </div>
+        
+        <!-- 提交按钮 -->
+        <div class="form-group">
+          <button type="submit" class="btn btn-primary" id="submitBtn">添加游戏</button>
+          <button type="button" class="btn btn-secondary" style="margin-left: 10px;" onclick="location.href='/admin/index.html'">返回</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 检查登录状态
+      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      
+      if (!isLoggedIn) {
+        // 未登录，显示警告
+        document.getElementById('loginAlert').style.display = 'block';
+      } else {
+        // 已登录，显示上传表单
+        document.getElementById('uploadPanel').style.display = 'block';
+        
+        // 初始化上传功能
+        initUploadForm();
+      }
+      
+      // 初始化语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', toggleLanguage);
+      }
+    });
+    
+    /**
+     * 初始化上传表单
+     */
+    function initUploadForm() {
+      // 缩略图上传区点击事件
+      const thumbnailUpload = document.getElementById('thumbnailUpload');
+      const thumbnailInput = document.getElementById('thumbnailInput');
+      
+      thumbnailUpload.addEventListener('click', function() {
+        thumbnailInput.click(); // 触发文件选择框
+      });
+      
+      // 监听文件选择
+      thumbnailInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+      });
+      
+      // 拖放事件处理
+      thumbnailUpload.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        thumbnailUpload.classList.add('dragover');
+      });
+      
+      thumbnailUpload.addEventListener('dragleave', function() {
+        thumbnailUpload.classList.remove('dragover');
+      });
+      
+      thumbnailUpload.addEventListener('drop', function(e) {
+        e.preventDefault();
+        thumbnailUpload.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+      });
+      
+      // 表单提交处理
+      const uploadForm = document.getElementById('uploadForm');
+      uploadForm.addEventListener('submit', handleSubmit);
+    }
+    
+    /**
+     * 处理选择的文件
+     * @param {FileList} files - 选择的文件列表
+     */
+    function handleFiles(files) {
+      if (!files || files.length === 0) return;
+      
+      const file = files[0]; // 只处理第一个文件
+      
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        showAlert('请选择有效的图片文件', 'danger');
+        return;
+      }
+      
+      // 验证文件大小 (限制为2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        showAlert('图片文件不能超过2MB', 'danger');
+        return;
+      }
+      
+      // 预览图片
+      const previewContainer = document.getElementById('thumbnailPreview');
+      previewContainer.innerHTML = ''; // 清空现有预览
+      
+      const previewItem = document.createElement('div');
+      previewItem.className = 'preview-item';
+      
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      img.onload = function() {
+        URL.revokeObjectURL(this.src); // 释放内存
+      };
+      
+      const removeBtn = document.createElement('div');
+      removeBtn.className = 'preview-remove';
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', function(e) {
+        e.stopPropagation(); // 阻止冒泡
+        previewContainer.innerHTML = ''; // 移除预览
+        document.getElementById('thumbnailInput').value = ''; // 清空文件输入
+      });
+      
+      previewItem.appendChild(img);
+      previewItem.appendChild(removeBtn);
+      previewContainer.appendChild(previewItem);
+    }
+    
+    /**
+     * 处理表单提交
+     * @param {Event} e - 提交事件
+     */
+    function handleSubmit(e) {
+      e.preventDefault();
+      
+      // 获取表单数据
+      const formData = {
+        id: generateId(document.getElementById('gameTitleEn').value),
+        title: {
+          zh: document.getElementById('gameTitle').value,
+          en: document.getElementById('gameTitleEn').value
+        },
+        description: {
+          zh: document.getElementById('gameDescription').value,
+          en: document.getElementById('gameDescriptionEn').value
+        },
+        iframeUrl: document.getElementById('gameUrl').value,
+        category: document.getElementById('gameCategory').value,
+        active: true,
+        dateAdded: new Date().toISOString()
+      };
+      
+      // 获取缩略图文件
+      const thumbnailInput = document.getElementById('thumbnailInput');
+      const thumbnailFile = thumbnailInput.files[0];
+      
+      // 验证必填字段
+      if (!formData.title.zh || !formData.title.en || !formData.description.zh || 
+          !formData.description.en || !formData.iframeUrl || !formData.category) {
+        showAlert('请填写所有必填字段', 'danger');
+        return;
+      }
+      
+      // 这里应该有文件上传和数据保存的逻辑
+      // 由于我们使用的是纯前端方案，这里仅模拟保存过程
+      
+      // 显示加载状态
+      const submitBtn = document.getElementById('submitBtn');
+      const originalBtnText = submitBtn.textContent;
+      submitBtn.textContent = '保存中...';
+      submitBtn.disabled = true;
+      
+      // 模拟保存操作
+      setTimeout(function() {
+        // 获取现有游戏数据
+        const currentGames = JSON.parse(localStorage.getItem('customGames') || '[]');
+        
+        // 添加新游戏
+        currentGames.push(formData);
+        
+        // 保存回localStorage
+        localStorage.setItem('customGames', JSON.stringify(currentGames));
+        
+        // 恢复按钮状态
+        submitBtn.textContent = originalBtnText;
+        submitBtn.disabled = false;
+        
+        // 显示成功消息
+        showAlert('游戏已成功添加！', 'success');
+        
+        // 重置表单
+        document.getElementById('uploadForm').reset();
+        document.getElementById('thumbnailPreview').innerHTML = '';
+      }, 1500);
+    }
+    
+    /**
+     * 从游戏标题生成ID
+     * @param {string} title - 游戏标题
+     * @returns {string} 生成的ID
+     */
+    function generateId(title) {
+      // 将标题转为小写，并删除特殊字符，用连字符替换空格
+      const id = title.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-');
+      
+      // 添加时间戳确保唯一性
+      return id + '-' + Date.now().toString(36);
+    }
+    
+    /**
+     * 显示提醒消息
+     * @param {string} message - 消息文本
+     * @param {string} type - 消息类型 (success, danger, warning, info)
+     */
+    function showAlert(message, type) {
+      const alertContainer = document.getElementById('alertContainer');
+      
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // 添加关闭按钮
+      const closeBtn = document.createElement('span');
+      closeBtn.style.float = 'right';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function() {
+        alert.remove();
+      });
+      
+      alert.appendChild(closeBtn);
+      alertContainer.prepend(alert);
+      
+      // 5秒后自动关闭
+      setTimeout(function() {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, 5000);
+    }
+    
+    /**
+     * 切换界面语言
+     */
+    function toggleLanguage() {
+      // 获取当前语言
+      let currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 切换语言
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('locale', currentLang);
+      
+      // 更新按钮文本
+      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
+      
+      // 更新界面文本
+      updateUIText();
+    }
+    
+    /**
+     * 更新界面文本
+     */
+    function updateUIText() {
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      const translations = {
+        zh: {
+          'site.title': 'AI Stone 游戏导航 - 上传游戏',
+          'upload.title': '上传新游戏',
+          'login.required': '您需要先登录才能访问此页面。',
+          'login.link': '前往登录',
+          'form.game.title.zh': '游戏标题（中文）',
+          'form.game.title.zh.hint': '输入游戏的中文标题',
+          'form.game.title.en': '游戏标题（英文）',
+          'form.game.title.en.hint': '输入游戏的英文标题',
+          'form.game.desc.zh': '游戏描述（中文）',
+          'form.game.desc.zh.hint': '简要描述游戏内容和玩法',
+          'form.game.desc.en': '游戏描述（英文）',
+          'form.game.desc.en.hint': '游戏描述的英文版本',
+          'form.game.category': '游戏分类',
+          'form.game.category.hint': '选择最合适的游戏分类',
+          'form.game.category.select': '-- 选择分类 --',
+          'form.game.url': '游戏链接 (iframe URL)',
+          'form.game.url.hint': '输入可以通过iframe嵌入的游戏URL，推荐使用https链接',
+          'form.game.thumbnail': '游戏缩略图',
+          'form.game.thumbnail.drag': '点击或拖拽图片到此处上传',
+          'form.game.thumbnail.hint': '推荐尺寸：300×200px，PNG或JPG格式',
+          'form.submit': '添加游戏',
+          'form.cancel': '返回',
+          'alert.fill.required': '请填写所有必填字段',
+          'alert.image.type': '请选择有效的图片文件',
+          'alert.image.size': '图片文件不能超过2MB',
+          'alert.success': '游戏已成功添加！',
+          'btn.saving': '保存中...',
+          'nav.home': '首页',
+          'nav.favorites': '收藏夹',
+          'nav.admin': '管理'
+        },
+        en: {
+          'site.title': 'AI Stone Game Navigation - Upload Game',
+          'upload.title': 'Upload New Game',
+          'login.required': 'You need to login first to access this page.',
+          'login.link': 'Go to Login',
+          'form.game.title.zh': 'Game Title (Chinese)',
+          'form.game.title.zh.hint': 'Enter the Chinese title of the game',
+          'form.game.title.en': 'Game Title (English)',
+          'form.game.title.en.hint': 'Enter the English title of the game',
+          'form.game.desc.zh': 'Game Description (Chinese)',
+          'form.game.desc.zh.hint': 'Briefly describe the game content and gameplay',
+          'form.game.desc.en': 'Game Description (English)',
+          'form.game.desc.en.hint': 'English version of the game description',
+          'form.game.category': 'Game Category',
+          'form.game.category.hint': 'Select the most appropriate game category',
+          'form.game.category.select': '-- Select Category --',
+          'form.game.url': 'Game Link (iframe URL)',
+          'form.game.url.hint': 'Enter a game URL that can be embedded via iframe, https recommended',
+          'form.game.thumbnail': 'Game Thumbnail',
+          'form.game.thumbnail.drag': 'Click or drag image here to upload',
+          'form.game.thumbnail.hint': 'Recommended size: 300×200px, PNG or JPG format',
+          'form.submit': 'Add Game',
+          'form.cancel': 'Cancel',
+          'alert.fill.required': 'Please fill in all required fields',
+          'alert.image.type': 'Please select a valid image file',
+          'alert.image.size': 'Image file cannot exceed 2MB',
+          'alert.success': 'Game has been successfully added!',
+          'btn.saving': 'Saving...',
+          'nav.home': 'Home',
+          'nav.favorites': 'Favorites',
+          'nav.admin': 'Admin'
+        }
+      };
+      
+      // 设置页面标题
+      document.title = translations[currentLang]['site.title'];
+      document.querySelector('.site-title').textContent = translations[currentLang]['site.title'];
+      
+      // 更新导航链接
+      const navLinks = document.querySelectorAll('.main-nav a');
+      navLinks[0].textContent = translations[currentLang]['nav.home'];
+      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
+      navLinks[2].textContent = translations[currentLang]['nav.admin'];
+      
+      // 更新登录警告
+      if (document.getElementById('loginAlert')) {
+        document.getElementById('loginAlert').innerHTML = 
+          translations[currentLang]['login.required'] + 
+          ` <a href="/admin/index.html">${translations[currentLang]['login.link']}</a>`;
+      }
+      
+      // 更新表单标题和字段
+      document.querySelector('.admin-title').textContent = translations[currentLang]['upload.title'];
+      
+      // 更新表单标签和提示
+      const labels = {
+        'gameTitle': 'form.game.title.zh',
+        'gameTitleEn': 'form.game.title.en',
+        'gameDescription': 'form.game.desc.zh',
+        'gameDescriptionEn': 'form.game.desc.en',
+        'gameCategory': 'form.game.category',
+        'gameUrl': 'form.game.url'
+      };
+      
+      const hints = {
+        'gameTitle': 'form.game.title.zh.hint',
+        'gameTitleEn': 'form.game.title.en.hint',
+        'gameDescription': 'form.game.desc.zh.hint',
+        'gameDescriptionEn': 'form.game.desc.en.hint',
+        'gameCategory': 'form.game.category.hint',
+        'gameUrl': 'form.game.url.hint'
+      };
+      
+      // 更新表单标签
+      for (const [id, key] of Object.entries(labels)) {
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) {
+          label.textContent = translations[currentLang][key];
+        }
+      }
+      
+      // 更新表单提示
+      for (const [id, key] of Object.entries(hints)) {
+        const hint = document.querySelector(`#${id} + .form-hint`);
+        if (hint) {
+          hint.textContent = translations[currentLang][key];
+        }
+      }
+      
+      // 更新缩略图上传区域文本
+      const uploadTextElem = document.querySelector('.upload-text');
+      if (uploadTextElem) {
+        uploadTextElem.textContent = translations[currentLang]['form.game.thumbnail.drag'];
+      }
+      
+      const thumbnailHint = document.querySelector('#thumbnailUpload .form-hint');
+      if (thumbnailHint) {
+        thumbnailHint.textContent = translations[currentLang]['form.game.thumbnail.hint'];
+      }
+      
+      // 更新按钮文本
+      document.getElementById('submitBtn').textContent = translations[currentLang]['form.submit'];
+      document.querySelector('.btn-secondary').textContent = translations[currentLang]['form.cancel'];
+      
+      // 更新分类选择器
+      const categorySelect = document.getElementById('gameCategory');
+      categorySelect.options[0].text = translations[currentLang]['form.game.category.select'];
+    }
+  </script>
+</body>
+</html> 

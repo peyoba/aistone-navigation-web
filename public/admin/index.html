@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Stone 游戏导航 - 管理后台</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    /* 管理页面特定样式 */
+    .admin-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .admin-panel {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    
+    .login-form {
+      max-width: 400px;
+      margin: 20px auto;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    .btn-primary {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+    }
+    
+    .btn-primary:hover {
+      background-color: #1d4ed8;
+    }
+    
+    .alert {
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+    
+    .alert-danger {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #f87171;
+    }
+    
+    .admin-menu {
+      display: none; /* 登录前隐藏 */
+    }
+    
+    .admin-menu.active {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    
+    .admin-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    
+    .admin-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .admin-card h3 {
+      margin-bottom: 15px;
+      color: #2563eb;
+    }
+    
+    .admin-card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 15px;
+    }
+    
+    .admin-card p {
+      margin-bottom: 15px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <header class="main-header">
+    <h1 class="site-title">AI Stone 游戏导航 - 管理后台</h1>
+    <nav class="main-nav">
+      <a href="/">首页</a>
+      <a href="/favorites.html">收藏夹</a>
+      <a href="/admin/index.html" class="active">管理</a>
+      <button id="toggleLang">English</button>
+    </nav>
+  </header>
+  
+  <div class="admin-container">
+    <!-- 登录面板 -->
+    <div class="admin-panel" id="loginPanel">
+      <h2>管理员登录</h2>
+      <div id="loginError" class="alert alert-danger" style="display: none;"></div>
+      
+      <form class="login-form" id="loginForm">
+        <div class="form-group">
+          <label for="username">用户名</label>
+          <input type="text" id="username" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">密码</label>
+          <input type="password" id="password" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+          <button type="submit" class="btn-primary">登录</button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- 管理菜单 -->
+    <div class="admin-menu" id="adminMenu">
+      <div class="admin-card" onclick="location.href='/admin/games.html'">
+        <div class="admin-card-icon">🎮</div>
+        <h3>游戏管理</h3>
+        <p>添加、编辑和删除游戏</p>
+      </div>
+      
+      <div class="admin-card" onclick="location.href='/admin/categories.html'">
+        <div class="admin-card-icon">📊</div>
+        <h3>分类管理</h3>
+        <p>管理游戏分类</p>
+      </div>
+      
+      <div class="admin-card" onclick="location.href='/admin/upload.html'">
+        <div class="admin-card-icon">📤</div>
+        <h3>上传游戏</h3>
+        <p>添加新游戏到平台</p>
+      </div>
+      
+      <div class="admin-card" onclick="location.href='/admin/settings.html'">
+        <div class="admin-card-icon">⚙️</div>
+        <h3>网站设置</h3>
+        <p>管理网站基本设置</p>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    // 管理员页面特定脚本
+    document.addEventListener('DOMContentLoaded', () => {
+      // 检查是否已登录
+      checkLoginStatus();
+      
+      // 登录表单提交
+      const loginForm = document.getElementById('loginForm');
+      if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+      }
+      
+      // 语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', toggleLanguage);
+      }
+    });
+    
+    /**
+     * 检查登录状态
+     */
+    function checkLoginStatus() {
+      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      
+      if (isLoggedIn) {
+        // 显示管理菜单
+        document.getElementById('loginPanel').style.display = 'none';
+        document.getElementById('adminMenu').classList.add('active');
+        console.log('管理员已登录');
+      } else {
+        // 显示登录面板
+        document.getElementById('loginPanel').style.display = 'block';
+        document.getElementById('adminMenu').classList.remove('active');
+        console.log('未登录，显示登录面板');
+      }
+    }
+    
+    /**
+     * 处理登录
+     */
+    function handleLogin(event) {
+      event.preventDefault();
+      
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      console.log('尝试登录:', username);
+      
+      // 使用admin.js中的adminLogin函数验证
+      if (adminLogin(username, password)) {
+        // 登录成功
+        checkLoginStatus();
+        showAdminAlert('登录成功，欢迎回来！', 'success');
+      } else {
+        // 登录失败
+        const errorElem = document.getElementById('loginError');
+        errorElem.textContent = '用户名或密码错误';
+        errorElem.style.display = 'block';
+      }
+    }
+    
+    /**
+     * 切换语言
+     */
+    function toggleLanguage() {
+      // 获取当前语言
+      let currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 切换语言
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('locale', currentLang);
+      
+      // 更新按钮文本
+      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
+      
+      // 更新页面文本
+      updateUIText();
+    }
+    
+    /**
+     * 更新界面文本
+     */
+    function updateUIText() {
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      const translations = {
+        zh: {
+          'admin.title': 'AI Stone 游戏导航 - 管理后台',
+          'admin.login': '管理员登录',
+          'admin.username': '用户名',
+          'admin.password': '密码',
+          'admin.login.button': '登录',
+          'admin.login.error': '用户名或密码错误',
+          'admin.games': '游戏管理',
+          'admin.games.desc': '添加、编辑和删除游戏',
+          'admin.categories': '分类管理',
+          'admin.categories.desc': '管理游戏分类',
+          'admin.upload': '上传游戏',
+          'admin.upload.desc': '添加新游戏到平台',
+          'admin.settings': '网站设置',
+          'admin.settings.desc': '管理网站基本设置',
+          'nav.home': '首页',
+          'nav.favorites': '收藏夹',
+          'nav.admin': '管理'
+        },
+        en: {
+          'admin.title': 'AI Stone Game Navigation - Admin',
+          'admin.login': 'Administrator Login',
+          'admin.username': 'Username',
+          'admin.password': 'Password',
+          'admin.login.button': 'Login',
+          'admin.login.error': 'Invalid username or password',
+          'admin.games': 'Game Management',
+          'admin.games.desc': 'Add, edit and delete games',
+          'admin.categories': 'Category Management',
+          'admin.categories.desc': 'Manage game categories',
+          'admin.upload': 'Upload Game',
+          'admin.upload.desc': 'Add new games to the platform',
+          'admin.settings': 'Website Settings',
+          'admin.settings.desc': 'Manage website settings',
+          'nav.home': 'Home',
+          'nav.favorites': 'Favorites',
+          'nav.admin': 'Admin'
+        }
+      };
+      
+      // 设置页面标题
+      document.title = translations[currentLang]['admin.title'];
+      document.querySelector('.site-title').textContent = translations[currentLang]['admin.title'];
+      
+      // 更新导航链接
+      const navLinks = document.querySelectorAll('.main-nav a');
+      navLinks[0].textContent = translations[currentLang]['nav.home'];
+      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
+      navLinks[2].textContent = translations[currentLang]['nav.admin'];
+      
+      // 更新登录表单
+      document.querySelector('#loginPanel h2').textContent = translations[currentLang]['admin.login'];
+      document.querySelector('label[for="username"]').textContent = translations[currentLang]['admin.username'];
+      document.querySelector('label[for="password"]').textContent = translations[currentLang]['admin.password'];
+      document.querySelector('#loginForm .btn-primary').textContent = translations[currentLang]['admin.login.button'];
+      
+      // 更新管理菜单
+      const cards = document.querySelectorAll('.admin-card h3');
+      const cardDescs = document.querySelectorAll('.admin-card p');
+      
+      if (cards.length >= 4) {
+        cards[0].textContent = translations[currentLang]['admin.games'];
+        cards[1].textContent = translations[currentLang]['admin.categories'];
+        cards[2].textContent = translations[currentLang]['admin.upload'];
+        cards[3].textContent = translations[currentLang]['admin.settings'];
+        
+        cardDescs[0].textContent = translations[currentLang]['admin.games.desc'];
+        cardDescs[1].textContent = translations[currentLang]['admin.categories.desc'];
+        cardDescs[2].textContent = translations[currentLang]['admin.upload.desc'];
+        cardDescs[3].textContent = translations[currentLang]['admin.settings.desc'];
+      }
+    }
+  </script>
+</body>
+</html> 
