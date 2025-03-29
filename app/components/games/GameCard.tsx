@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Game } from '../../data/games';
 import FavoriteButton from './FavoriteButton';
+import { getThumbnailUrl } from '../../utils/dataService';
 
 interface GameCardProps {
   game: Game;
@@ -13,8 +14,8 @@ interface GameCardProps {
 }
 
 export default function GameCard({ game, locale, t }: GameCardProps) {
-  // 为缩略图URL添加时间戳，防止浏览器缓存
-  const thumbnailWithTimestamp = `${game.thumbnail}${game.thumbnail.includes('?') ? '&' : '?'}v=${Date.now()}`;
+  // 使用全局版本号处理缩略图URL
+  const thumbnailWithVersion = getThumbnailUrl(game.thumbnail || '/images/placeholder.jpg');
   
   // 根据当前语言选择显示的标题和描述
   const title = locale === 'en' ? game.title.en : game.title.zh;
@@ -24,7 +25,7 @@ export default function GameCard({ game, locale, t }: GameCardProps) {
     <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all hover:shadow-lg">
       <div className="relative aspect-video bg-gray-200">
         <img 
-          src={thumbnailWithTimestamp} 
+          src={thumbnailWithVersion} 
           alt={title} 
           className="w-full h-full object-cover"
           loading="lazy"

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Game, Category } from '../../data/games';
 import { getTranslations, useTranslation } from '../../utils/i18n';
-import { getGames, getCategories, updateGameStatus } from '../../utils/dataService';
+import { getGames, getCategories, updateGameStatus, updateDataVersion } from '../../utils/dataService';
 import SyncStatusPanel from '../../components/admin/SyncStatusPanel';
 
 export default function AdminDashboardPage() {
@@ -64,6 +64,9 @@ export default function AdminDashboardPage() {
         const updatedGames = updateGameStatus(gameId, !game.active);
         console.log('游戏状态更新成功');
         
+        // 手动更新数据版本号，确保前台能检测到变化
+        updateDataVersion();
+        
         // 更新游戏列表状态，移除isToggling标志
         setGames(updatedGames.map(g => ({ ...g, isToggling: false })));
       } catch (error) {
@@ -81,6 +84,11 @@ export default function AdminDashboardPage() {
     const categoriesData = getCategories();
     setGames(gamesData);
     setCategories(categoriesData);
+    
+    // 更新数据版本号
+    updateDataVersion();
+    
+    console.log('数据已刷新，版本号已更新');
   };
 
   // 处理登出

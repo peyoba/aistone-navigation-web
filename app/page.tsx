@@ -6,7 +6,12 @@ import Layout from './components/layout/Layout';
 import GameGrid from './components/games/GameGrid';
 import { Game } from './data/games';
 import { getTranslations, useTranslation } from './utils/i18n';
-import { getGames, addDataChangeListener, getSyncStatus } from './utils/dataService';
+import { 
+  getGames, 
+  getDataVersion,
+  startDataPolling,
+  getSyncStatus 
+} from './utils/dataService';
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,6 +21,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
+  const [dataVersion, setDataVersion] = useState<number>(0);
   const { t } = useTranslation(locale, translations);
   
   // 加载游戏数据函数
@@ -34,6 +40,10 @@ export default function HomePage() {
       
       setGames(activeGames);
       setLastUpdated(new Date().toISOString());
+      
+      // 获取并设置当前数据版本号
+      const version = getDataVersion();
+      setDataVersion(version);
       
       // 检查同步状态
       const syncStatus = getSyncStatus();
@@ -67,11 +77,11 @@ export default function HomePage() {
     loadTranslations();
     loadGames();
 
-    // 使用增强的数据变化监听
-    const cleanup = addDataChangeListener(() => {
-      console.log('检测到数据变化，重新加载游戏...');
+    // 使用轮询机制检查数据变化（替代事件监听）
+    const cleanup = startDataPolling(() => {
+      console.log('轮询检测到数据变化，重新加载游戏...');
       loadGames(true); // 强制刷新数据
-    });
+    }, 2000); // 每2秒检查一次
     
     return cleanup;
   }, [loadGames]);
@@ -132,11 +142,11 @@ export default function HomePage() {
           <GameGrid games={games} locale={locale} t={t} />
         )}
         
-        {/* 更新时间指示器 */}
+        {/* 更新时间和版本指示器 */}
         <div className="text-right text-sm text-gray-500 mt-4">
           {locale === 'en' 
-            ? `Last updated: ${new Date(lastUpdated).toLocaleString()}` 
-            : `最后更新: ${new Date(lastUpdated).toLocaleString()}`}
+            ? `Last updated: ${new Date(lastUpdated).toLocaleString()} (v${dataVersion})` 
+            : `最后更新: ${new Date(lastUpdated).toLocaleString()} (版本:${dataVersion})`}
         </div>
       </div>
     </Layout>

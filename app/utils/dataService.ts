@@ -5,6 +5,9 @@ const GAMES_STORAGE_KEY = 'stone_games_data';
 const CATEGORIES_STORAGE_KEY = 'stone_categories_data';
 const SYNC_STATUS_KEY = 'stone_sync_status';
 
+// 全局数据版本号存储键
+const DATA_VERSION_KEY = 'stone_data_version';
+
 // 数据同步状态接口
 export interface SyncStatus {
   lastSyncTime: string;
@@ -83,8 +86,8 @@ export const saveGames = (games: Game[]): void => {
     localStorage.setItem(GAMES_STORAGE_KEY, gamesJson);
     console.log('保存游戏数据到localStorage成功');
     
-    // 更新缓存时间戳
-    localStorage.setItem('_games_cache_timestamp', Date.now().toString());
+    // 更新数据版本号
+    updateDataVersion();
     
     // 更新同步状态
     updateSyncStatus({
@@ -389,4 +392,78 @@ export const addDataChangeListener = (callback: () => void): () => void => {
     }
     console.log('已清理数据变化监听器');
   };
+};
+
+// 获取当前数据版本号
+export const getDataVersion = (): number => {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
+  
+  try {
+    const version = localStorage.getItem(DATA_VERSION_KEY);
+    return version ? parseInt(version, 10) : 0;
+  } catch (error) {
+    console.error('获取数据版本号出错:', error);
+    return 0;
+  }
+};
+
+// 更新数据版本号（每次数据变化时调用）
+export const updateDataVersion = (): number => {
+  if (typeof window === 'undefined') {
+    return 0;
+  }
+  
+  try {
+    const newVersion = Date.now();
+    localStorage.setItem(DATA_VERSION_KEY, newVersion.toString());
+    console.log('数据版本已更新:', newVersion);
+    return newVersion;
+  } catch (error) {
+    console.error('更新数据版本号出错:', error);
+    return 0;
+  }
+};
+
+// 简化的轮询功能 - 监测数据变化
+export const startDataPolling = (callback: () => void, interval = 3000): () => void => {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+  
+  let lastKnownVersion = getDataVersion();
+  
+  // 开始轮询
+  const timerId = setInterval(() => {
+    const currentVersion = getDataVersion();
+    
+    // 检查版本号是否已更改
+    if (currentVersion !== lastKnownVersion) {
+      console.log(`检测到数据版本变化: ${lastKnownVersion} -> ${currentVersion}`);
+      lastKnownVersion = currentVersion;
+      
+      // 执行回调
+      callback();
+    }
+  }, interval);
+  
+  console.log(`已启动数据轮询，间隔: ${interval}ms`);
+  
+  // 返回清理函数
+  return () => {
+    clearInterval(timerId);
+    console.log('已停止数据轮询');
+  };
+};
+
+// 获取缩略图URL（添加版本号）
+export const getThumbnailUrl = (originalUrl: string): string => {
+  if (!originalUrl) return '/images/placeholder.jpg';
+  
+  // 获取当前数据版本号
+  const version = getDataVersion();
+  
+  // 添加版本号参数
+  return `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}v=${version}`;
 }; 
