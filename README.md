@@ -74,3 +74,10 @@ npm run dev
 ## 许可
 
 本项目基于MIT许可 
+
+## 推送到远程仓库
+
+```bash
+# 将当前分支(main)推送到远程仓库
+git push -u origin main
+```

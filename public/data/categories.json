@@ -1,0 +1,58 @@
+{
+  "categories": [
+    {
+      "id": "all",
+      "name": {
+        "en": "All Games",
+        "zh": "所有游戏"
+      },
+      "order": 0,
+      "active": true
+    },
+    {
+      "id": "action",
+      "name": {
+        "en": "Action",
+        "zh": "动作游戏"
+      },
+      "order": 1,
+      "active": true
+    },
+    {
+      "id": "puzzle",
+      "name": {
+        "en": "Puzzle",
+        "zh": "益智游戏"
+      },
+      "order": 2,
+      "active": true
+    },
+    {
+      "id": "adventure",
+      "name": {
+        "en": "Adventure",
+        "zh": "冒险游戏"
+      },
+      "order": 3,
+      "active": true
+    },
+    {
+      "id": "strategy",
+      "name": {
+        "en": "Strategy",
+        "zh": "策略游戏"
+      },
+      "order": 4,
+      "active": true
+    },
+    {
+      "id": "sports",
+      "name": {
+        "en": "Sports",
+        "zh": "体育游戏"
+      },
+      "order": 5,
+      "active": true
+    }
+  ]
+} 

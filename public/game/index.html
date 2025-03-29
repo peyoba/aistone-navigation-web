@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏加载中... - AI Stone导航</title>
+  <meta name="description" content="体验精彩的网页游戏">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <div class="container">
+    <div class="game-container">
+      <div class="game-header">
+        <a href="/" class="back-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          <span>返回首页</span>
+        </a>
+        
+        <h1 id="gameTitle">加载中...</h1>
+        
+        <div class="controls">
+          <button id="fullscreenBtn" class="control-btn">
+            <span>全屏</span>
+          </button>
+          <button id="refreshBtn" class="control-btn">
+            <span>刷新</span>
+          </button>
+        </div>
+      </div>
+      
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>正在加载游戏...</p>
+      </div>
+      
+      <div id="iframeContainer" class="iframe-container" style="display: none;">
+        <iframe id="gameFrame" allowfullscreen></iframe>
+      </div>
+      
+      <div id="errorContainer" class="error-container" style="display: none;">
+        <p>加载游戏时出错</p>
+        <button onclick="location.reload()" class="game-link">重试</button>
+        <a href="/" class="game-link">返回首页</a>
+      </div>
+    </div>
+    
+    <div id="gameInfo" class="game-info-container">
+      <p id="gameDescription" class="game-description">加载中...</p>
+    </div>
+    
+    <footer>
+      <p>&copy; 2025 AI Stone Navigation - 所有游戏版权归各自开发者所有</p>
+    </footer>
+  </div>
+  
+  <script>
+    // 全局变量
+    let currentLang = 'zh';
+    let gameData = null;
+    
+    // DOM加载完成后执行
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 获取游戏ID
+      const urlParams = new URLSearchParams(window.location.search);
+      const gameId = urlParams.get('id');
+      
+      if (!gameId) {
+        showError('未指定游戏ID');
+        return;
+      }
+      
+      // 获取当前语言
+      currentLang = localStorage.getItem('locale') || 'zh';
+      
+      try {
+        // 加载游戏数据
+        const response = await fetch('/data/games.json');
+        if (!response.ok) {
+          throw new Error('无法加载游戏数据');
+        }
+        
+        const data = await response.json();
+        gameData = data.games.find(game => game.id === gameId);
+        
+        if (!gameData) {
+          throw new Error('找不到该游戏');
+        }
+        
+        // 更新页面
+        updateGamePage();
+        
+      } catch (error) {
+        console.error('错误:', error);
+        showError(error.message);
+      }
+    });
+    
+    /**
+     * 更新游戏页面
+     */
+    function updateGamePage() {
+      // 设置页面标题
+      document.title = `${gameData.title[currentLang]} - AI Stone导航`;
+      
+      // 更新游戏标题和描述
+      document.getElementById('gameTitle').textContent = gameData.title[currentLang];
+      document.getElementById('gameDescription').textContent = gameData.description[currentLang];
+      
+      // 设置iframe源
+      const gameFrame = document.getElementById('gameFrame');
+      gameFrame.src = gameData.iframeUrl;
+      
+      // 设置iframe加载事件
+      gameFrame.onload = function() {
+        // 隐藏加载状态，显示iframe
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('iframeContainer').style.display = 'block';
+      };
+      
+      // 设置iframe错误处理
+      gameFrame.onerror = function() {
+        showError('游戏加载失败');
+      };
+      
+      // 设置全屏按钮事件
+      document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+      
+      // 设置刷新按钮事件
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        gameFrame.src = gameData.iframeUrl;
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('iframeContainer').style.display = 'none';
+      });
+      
+      // 更新返回按钮文本
+      const backBtnText = document.querySelector('.back-btn span');
+      backBtnText.textContent = currentLang === 'zh' ? '返回首页' : 'Back to Home';
+      
+      // 更新控制按钮文本
+      document.querySelector('#fullscreenBtn span').textContent = currentLang === 'zh' ? '全屏' : 'Fullscreen';
+      document.querySelector('#refreshBtn span').textContent = currentLang === 'zh' ? '刷新' : 'Refresh';
+    }
+    
+    /**
+     * 显示错误信息
+     */
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('iframeContainer').style.display = 'none';
+      
+      const errorContainer = document.getElementById('errorContainer');
+      errorContainer.style.display = 'block';
+      errorContainer.querySelector('p').textContent = currentLang === 'zh' 
+        ? `加载游戏时出错: ${message}` 
+        : `Error loading game: ${message}`;
+    }
+    
+    /**
+     * 切换全屏模式
+     */
+    function toggleFullscreen() {
+      const iframe = document.getElementById('gameFrame');
+      
+      if (!document.fullscreenElement) {
+        // 进入全屏
+        if (iframe.requestFullscreen) {
+          iframe.requestFullscreen();
+        } else if (iframe.webkitRequestFullscreen) { /* Safari */
+          iframe.webkitRequestFullscreen();
+        } else if (iframe.msRequestFullscreen) { /* IE11 */
+          iframe.msRequestFullscreen();
+        }
+      } else {
+        // 退出全屏
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) { /* Safari */
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) { /* IE11 */
+          document.msExitFullscreen();
+        }
+      }
+    }
+  </script>
+</body>
+</html> 

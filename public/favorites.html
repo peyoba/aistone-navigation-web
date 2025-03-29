@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我的收藏 - AI Stone导航</title>
+  <meta name="description" content="查看您收藏的游戏">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>我的收藏</h1>
+      <p>您收藏的游戏都在这里</p>
+    </header>
+    
+    <div class="menu-bar">
+      <div class="language-selector">
+        <button class="language-btn" data-lang="en">English</button>
+        <button class="language-btn active" data-lang="zh">中文</button>
+      </div>
+      
+      <a href="/" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        <span>返回首页</span>
+      </a>
+    </div>
+    
+    <main>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>正在加载收藏数据...</p>
+      </div>
+      
+      <div id="noFavorites" class="no-results" style="display: none;">
+        <p>您还没有收藏任何游戏</p>
+        <a href="/" class="game-link">浏览游戏</a>
+      </div>
+      
+      <div id="favoriteGrid" class="game-grid" style="display: none;">
+        <!-- 收藏的游戏卡片将通过JavaScript动态生成 -->
+      </div>
+    </main>
+    
+    <footer>
+      <p>&copy; 2025 AI Stone Navigation - 所有游戏版权归各自开发者所有</p>
+    </footer>
+  </div>
+  
+  <script>
+    // 全局变量
+    let games = [];
+    let favorites = [];
+    let currentLang = 'zh';
+    
+    // DOM加载完成后执行
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 获取当前语言
+      currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 初始化语言选择器
+      initLanguageSelector();
+      
+      // 加载收藏和游戏数据
+      await loadFavoritesAndGames();
+    });
+    
+    /**
+     * 初始化语言选择器
+     */
+    function initLanguageSelector() {
+      // 更新语言选择器按钮样式
+      document.querySelectorAll('.language-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === currentLang);
+        
+        // 添加点击事件
+        btn.addEventListener('click', () => {
+          currentLang = btn.dataset.lang;
+          localStorage.setItem('locale', currentLang);
+          updateUIText();
+          renderFavorites();
+        });
+      });
+      
+      // 更新返回按钮文本
+      document.querySelector('.back-btn span').textContent = 
+        currentLang === 'zh' ? '返回首页' : 'Back to Home';
+      
+      // 更新页面文本
+      updateUIText();
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    function updateUIText() {
+      const texts = {
+        'zh': {
+          'page.title': '我的收藏 - AI Stone导航',
+          'header.title': '我的收藏',
+          'header.description': '您收藏的游戏都在这里',
+          'loading': '正在加载收藏数据...',
+          'no.favorites': '您还没有收藏任何游戏',
+          'browse.games': '浏览游戏',
+          'back.home': '返回首页'
+        },
+        'en': {
+          'page.title': 'My Favorites - AI Stone Navigation',
+          'header.title': 'My Favorites',
+          'header.description': 'All your favorite games in one place',
+          'loading': 'Loading favorite games...',
+          'no.favorites': 'You haven\'t favorited any games yet',
+          'browse.games': 'Browse Games',
+          'back.home': 'Back to Home'
+        }
+      };
+      
+      // 更新页面标题
+      document.title = texts[currentLang]['page.title'];
+      
+      // 更新页面内容
+      document.querySelector('header h1').textContent = texts[currentLang]['header.title'];
+      document.querySelector('header p').textContent = texts[currentLang]['header.description'];
+      document.querySelector('#loading p').textContent = texts[currentLang]['loading'];
+      document.querySelector('#noFavorites p').textContent = texts[currentLang]['no.favorites'];
+      document.querySelector('#noFavorites a').textContent = texts[currentLang]['browse.games'];
+      document.querySelector('.back-btn span').textContent = texts[currentLang]['back.home'];
+    }
+    
+    /**
+     * 加载收藏和游戏数据
+     */
+    async function loadFavoritesAndGames() {
+      try {
+        // 显示加载状态
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('favoriteGrid').style.display = 'none';
+        document.getElementById('noFavorites').style.display = 'none';
+        
+        // 从localStorage加载收藏
+        const storedFavorites = localStorage.getItem('favorites');
+        favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
+        
+        // 如果没有收藏
+        if (favorites.length === 0) {
+          document.getElementById('loading').style.display = 'none';
+          document.getElementById('noFavorites').style.display = 'block';
+          return;
+        }
+        
+        // 加载游戏数据
+        const response = await fetch('/data/games.json');
+        if (!response.ok) {
+          throw new Error('无法加载游戏数据');
+        }
+        
+        const data = await response.json();
+        games = data.games;
+        
+        // 渲染收藏的游戏
+        renderFavorites();
+        
+        // 隐藏加载状态
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('favoriteGrid').style.display = 'grid';
+        
+      } catch (error) {
+        console.error('数据加载错误:', error);
+        document.getElementById('loading').innerHTML = `
+          <p>加载数据时出错: ${error.message}</p>
+          <button onclick="location.reload()" class="game-link">重试</button>
+        `;
+      }
+    }
+    
+    /**
+     * 渲染收藏的游戏
+     */
+    function renderFavorites() {
+      const favoriteGrid = document.getElementById('favoriteGrid');
+      favoriteGrid.innerHTML = '';
+      
+      // 过滤出收藏的游戏
+      const favoriteGames = games.filter(game => favorites.includes(game.id));
+      
+      // 如果没有收藏的游戏
+      if (favoriteGames.length === 0) {
+        document.getElementById('favoriteGrid').style.display = 'none';
+        document.getElementById('noFavorites').style.display = 'block';
+        return;
+      }
+      
+      // 渲染收藏的游戏卡片
+      favoriteGames.forEach(game => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        
+        const thumbnailSrc = game.thumbnail || '/images/placeholder.jpg';
+        
+        card.innerHTML = `
+          <img class="game-thumbnail" src="${thumbnailSrc}" alt="${game.title[currentLang]}" onerror="this.src='/images/placeholder.jpg'">
+          <div class="game-info">
+            <h2 class="game-title">${game.title[currentLang]}</h2>
+            <p class="game-desc">${game.description[currentLang]}</p>
+            <div class="game-actions">
+              <a href="/game/?id=${game.id}" class="game-link">${currentLang === 'zh' ? '开始游戏' : 'Play Now'}</a>
+              <button class="favorite-btn active" data-id="${game.id}">★</button>
+            </div>
+          </div>
+        `;
+        
+        // 添加收藏按钮事件
+        card.querySelector('.favorite-btn').addEventListener('click', (e) => {
+          toggleFavorite(game.id);
+          // 从列表中移除卡片
+          card.remove();
+          
+          // 检查是否还有收藏的游戏
+          if (favoriteGrid.children.length === 0) {
+            document.getElementById('favoriteGrid').style.display = 'none';
+            document.getElementById('noFavorites').style.display = 'block';
+          }
+        });
+        
+        favoriteGrid.appendChild(card);
+      });
+      
+      document.getElementById('favoriteGrid').style.display = 'grid';
+      document.getElementById('noFavorites').style.display = 'none';
+    }
+    
+    /**
+     * 切换游戏收藏状态
+     * @param {string} gameId - 游戏ID
+     */
+    function toggleFavorite(gameId) {
+      const index = favorites.indexOf(gameId);
+      if (index !== -1) {
+        // 从收藏中移除
+        favorites.splice(index, 1);
+        
+        // 保存到localStorage
+        localStorage.setItem('favorites', JSON.stringify(favorites));
+      }
+    }
+  </script>
+</body>
+</html> 

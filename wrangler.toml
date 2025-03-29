@@ -1,0 +1,22 @@
+name = "aistone-navigation-web"
+type = "webpack"
+account_id = ""
+workers_dev = true
+route = ""
+zone_id = ""
+
+[site]
+bucket = "./out"
+entry-point = "out"
+
+[build]
+command = "npm run build"
+upload.format = "service-worker"
+
+[env.production]
+name = "aistone-navigation-web-prod"
+route = "aistone-navigation-web.pages.dev/*"
+
+[env.staging]
+name = "aistone-navigation-web-staging"
+route = "staging.aistone-navigation-web.pages.dev/*" 
