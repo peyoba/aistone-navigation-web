@@ -33,7 +33,7 @@ export default function AdminLoginPage() {
     if (isLoggedIn) {
       router.push('/admin/dashboard');
     }
-  }, [router]);
+  }, []);
 
   // 加载中状态
   if (!translations || Object.keys(translations).length === 0) {

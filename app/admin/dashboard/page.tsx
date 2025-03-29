@@ -3,17 +3,19 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { games as initialGames, categories } from '../../data/games';
+import { Game, Category } from '../../data/games';
 import { getTranslations, useTranslation } from '../../utils/i18n';
+import { getGames, getCategories, updateGameStatus } from '../../utils/dataService';
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [locale, setLocale] = useState('en');
   const [translations, setTranslations] = useState<Record<string, any>>({});
+  const [games, setGames] = useState<Game[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const { t } = useTranslation(locale, translations);
-  const [games, setGames] = useState(initialGames);
   
-  // 在客户端加载时获取当前语言
+  // 在客户端加载时获取当前语言和数据
   useEffect(() => {
     // 从localStorage获取语言设置
     const savedLocale = localStorage.getItem('locale') || 'en';
@@ -25,14 +27,23 @@ export default function AdminDashboardPage() {
       setTranslations(trans);
     };
     
+    // 加载游戏和分类数据
+    const loadData = () => {
+      const gamesData = getGames();
+      const categoriesData = getCategories();
+      setGames(gamesData);
+      setCategories(categoriesData);
+    };
+    
     loadTranslations();
+    loadData();
     
     // 检查是否已登录
     const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
     if (!isLoggedIn) {
       router.push('/admin/login');
     }
-  }, [router]);
+  }, []); // 删除router依赖，避免重复触发
 
   // 加载中状态
   if (!translations || Object.keys(translations).length === 0) {
@@ -41,13 +52,23 @@ export default function AdminDashboardPage() {
 
   // 切换游戏状态
   const toggleGameStatus = (gameId: string) => {
-    setGames(prevGames => 
-      prevGames.map(game => 
-        game.id === gameId 
-          ? { ...game, active: !game.active } 
-          : game
-      )
-    );
+    const game = games.find(g => g.id === gameId);
+    if (game) {
+      const updatedGames = updateGameStatus(gameId, !game.active);
+      setGames(updatedGames);
+      
+      // 手动触发一个storage事件，以便首页能够感知到数据变化
+      try {
+        const event = new StorageEvent('storage', {
+          key: 'stone_games_data',
+          newValue: JSON.stringify(updatedGames),
+          url: window.location.href
+        });
+        window.dispatchEvent(event);
+      } catch (error) {
+        console.error('Failed to dispatch storage event:', error);
+      }
+    }
   };
 
   // 处理登出

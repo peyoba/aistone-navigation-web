@@ -1,26 +1,28 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 // 简易翻译函数
 export const useTranslation = (locale: string, translations: Record<string, any>) => {
-  const t = useCallback((key: string): string => {
-    const keys = key.split('.');
-    let result: any = translations;
-    
-    for (const k of keys) {
-      if (result[k] === undefined) {
-        console.warn(`Translation key not found: ${key}`);
+  const t = useMemo(() => {
+    return (key: string): string => {
+      const keys = key.split('.');
+      let result: any = translations;
+      
+      for (const k of keys) {
+        if (result[k] === undefined) {
+          console.warn(`Translation key not found: ${key}`);
+          return key;
+        }
+        result = result[k];
+      }
+      
+      if (typeof result !== 'string') {
+        console.warn(`Translation result is not a string for key: ${key}`);
         return key;
       }
-      result = result[k];
-    }
-    
-    if (typeof result !== 'string') {
-      console.warn(`Translation result is not a string for key: ${key}`);
-      return key;
-    }
-    
-    return result;
-  }, [translations]);
+      
+      return result;
+    };
+  }, [translations, locale]);
 
   return { t };
 };
