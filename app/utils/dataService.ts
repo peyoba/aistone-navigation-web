@@ -23,19 +23,32 @@ const initialSyncStatus: SyncStatus = {
 };
 
 // 获取游戏数据，优先从localStorage获取，如果没有则使用初始数据
-export const getGames = (): Game[] => {
+export const getGames = (forceRefresh = false): Game[] => {
   if (typeof window === 'undefined') {
     return initialGames;
   }
   
   try {
+    // 如果强制刷新，清除缓存
+    if (forceRefresh) {
+      console.log('强制刷新游戏数据');
+      localStorage.removeItem('_games_cache_timestamp');
+    }
+
     const storedGames = localStorage.getItem(GAMES_STORAGE_KEY);
     if (storedGames) {
       console.log('从localStorage加载游戏数据成功');
       // 更新同步状态
       updateSyncStatus({
-        frontendDataStatus: 'available'
+        frontendDataStatus: 'available',
+        adminDataStatus: 'available',
+        syncStatus: 'synced',
+        lastSyncTime: new Date().toISOString()
       });
+      
+      // 更新缓存时间戳
+      localStorage.setItem('_games_cache_timestamp', Date.now().toString());
+      
       return JSON.parse(storedGames);
     } else {
       console.log('localStorage中没有游戏数据，使用初始数据');
@@ -43,6 +56,8 @@ export const getGames = (): Game[] => {
       saveGames(initialGames);
       updateSyncStatus({
         frontendDataStatus: 'available',
+        adminDataStatus: 'available',
+        syncStatus: 'synced',
         message: '已初始化前端数据'
       });
       return initialGames;
@@ -68,6 +83,9 @@ export const saveGames = (games: Game[]): void => {
     localStorage.setItem(GAMES_STORAGE_KEY, gamesJson);
     console.log('保存游戏数据到localStorage成功');
     
+    // 更新缓存时间戳
+    localStorage.setItem('_games_cache_timestamp', Date.now().toString());
+    
     // 更新同步状态
     updateSyncStatus({
       frontendDataStatus: 'available',
@@ -79,24 +97,29 @@ export const saveGames = (games: Game[]): void => {
     
     // 尝试广播更改到其他页面
     try {
+      // 创建一个统一的更新消息
+      const updateMessage = {
+        type: 'games_updated',
+        timestamp: Date.now(),
+        source: 'dataService'
+      };
+      
       // 1. 使用 localStorage 事件触发（跨标签同步）
-      localStorage.setItem('stone_games_data_update_trigger', new Date().toISOString());
-      localStorage.removeItem('stone_games_data_update_trigger');
+      localStorage.setItem('stone_games_data_update_trigger', JSON.stringify(updateMessage));
       
       // 2. 使用 BroadcastChannel API（如果浏览器支持）
       if (typeof BroadcastChannel !== 'undefined') {
         const channel = new BroadcastChannel('stone_games_data_sync');
-        channel.postMessage({
-          type: 'games_updated',
-          timestamp: new Date().toISOString()
-        });
+        channel.postMessage(updateMessage);
         setTimeout(() => channel.close(), 1000);
       }
       
-      // 3. 尝试使用自定义事件（同一页面内同步）
+      // 3. 使用自定义事件（同一页面内同步）
       document.dispatchEvent(new CustomEvent('stone_games_updated', {
-        detail: { timestamp: new Date().toISOString() }
+        detail: updateMessage
       }));
+      
+      console.log('数据更新广播成功');
     } catch (broadcastError) {
       console.warn('Broadcasting data change failed:', broadcastError);
     }
@@ -257,13 +280,20 @@ export const syncFrontendData = (): boolean => {
       return false;
     }
     
+    // 强制刷新缓存时间戳
+    localStorage.setItem('_games_cache_timestamp', Date.now().toString());
+    
+    // 创建一个统一的更新消息
+    const updateMessage = {
+      type: 'manual_sync_requested',
+      timestamp: Date.now(),
+      source: 'syncFrontendData'
+    };
+    
     // 广播同步消息
     if (typeof BroadcastChannel !== 'undefined') {
       const channel = new BroadcastChannel('stone_games_data_sync');
-      channel.postMessage({
-        type: 'manual_sync_requested',
-        timestamp: new Date().toISOString()
-      });
+      channel.postMessage(updateMessage);
       setTimeout(() => channel.close(), 1000);
     }
     
@@ -278,12 +308,14 @@ export const syncFrontendData = (): boolean => {
     
     // 触发自定义事件
     document.dispatchEvent(new CustomEvent('stone_games_sync_completed', {
-      detail: { success: true, timestamp: new Date().toISOString() }
+      detail: { success: true, timestamp: Date.now(), ...updateMessage }
     }));
     
     // 触发localStorage事件
-    localStorage.setItem('stone_sync_timestamp', new Date().toISOString());
+    localStorage.setItem('stone_sync_timestamp', Date.now().toString());
+    localStorage.setItem('stone_games_data_update_trigger', JSON.stringify(updateMessage));
     
+    console.log('手动同步广播成功');
     return true;
   } catch (error) {
     console.error('同步失败:', error);
@@ -301,24 +333,42 @@ export const addDataChangeListener = (callback: () => void): () => void => {
     return () => {};
   }
   
+  // 创建一个防抖函数以避免多次快速触发
+  const debounce = (fn: Function, delay: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fn(...args), delay);
+    };
+  };
+  
+  // 使用防抖处理回调
+  const debouncedCallback = debounce(callback, 100);
+  
   // 1. 监听 localStorage 变化
   const storageHandler = (e: StorageEvent) => {
-    if (e.key === GAMES_STORAGE_KEY || e.key === 'stone_sync_timestamp' || e.key === 'stone_games_data_update_trigger') {
-      callback();
+    if (e.key === GAMES_STORAGE_KEY || 
+        e.key === 'stone_sync_timestamp' || 
+        e.key === 'stone_games_data_update_trigger' ||
+        e.key === '_games_cache_timestamp') {
+      console.log(`检测到localStorage变化: ${e.key}`);
+      debouncedCallback();
     }
   };
   
   // 2. 监听自定义事件
   const customEventHandler = () => {
-    callback();
+    console.log('检测到自定义事件触发');
+    debouncedCallback();
   };
   
   // 3. 创建 BroadcastChannel 监听器（如果支持）
   let channel: BroadcastChannel | null = null;
   if (typeof BroadcastChannel !== 'undefined') {
     channel = new BroadcastChannel('stone_games_data_sync');
-    channel.onmessage = () => {
-      callback();
+    channel.onmessage = (event) => {
+      console.log('检测到BroadcastChannel消息:', event.data);
+      debouncedCallback();
     };
   }
   
@@ -326,6 +376,8 @@ export const addDataChangeListener = (callback: () => void): () => void => {
   window.addEventListener('storage', storageHandler);
   document.addEventListener('stone_games_updated', customEventHandler);
   document.addEventListener('stone_games_sync_completed', customEventHandler);
+  
+  console.log('已设置数据变化监听器');
   
   // 返回清理函数
   return () => {
@@ -335,5 +387,6 @@ export const addDataChangeListener = (callback: () => void): () => void => {
     if (channel) {
       channel.close();
     }
+    console.log('已清理数据变化监听器');
   };
 }; 

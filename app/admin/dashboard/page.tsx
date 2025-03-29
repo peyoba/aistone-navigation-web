@@ -56,14 +56,31 @@ export default function AdminDashboardPage() {
     const game = games.find(g => g.id === gameId);
     if (game) {
       try {
-        console.log(`Toggling game status for ${gameId} from ${game.active} to ${!game.active}`);
+        console.log(`正在切换游戏 ${gameId} 的状态，从 ${game.active} 到 ${!game.active}`);
+        // 显示正在切换的状态
+        setGames(games.map(g => g.id === gameId ? { ...g, isToggling: true } : g));
+        
+        // 更新游戏状态并获取最新数据
         const updatedGames = updateGameStatus(gameId, !game.active);
-        console.log('Game status updated successfully');
-        setGames(updatedGames);
+        console.log('游戏状态更新成功');
+        
+        // 更新游戏列表状态，移除isToggling标志
+        setGames(updatedGames.map(g => ({ ...g, isToggling: false })));
       } catch (error) {
-        console.error('Error updating game status:', error);
+        console.error('更新游戏状态时出错:', error);
+        // 恢复原始状态，移除isToggling标志
+        setGames(games.map(g => ({ ...g, isToggling: false })));
       }
     }
+  };
+
+  // 手动刷新数据
+  const refreshData = () => {
+    // 获取最新游戏数据
+    const gamesData = getGames(true);  // true表示强制刷新
+    const categoriesData = getCategories();
+    setGames(gamesData);
+    setCategories(categoriesData);
   };
 
   // 处理登出
@@ -97,7 +114,13 @@ export default function AdminDashboardPage() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <h1 className="text-2xl font-bold mb-6 text-gray-800">{t('admin.gameManagement')}</h1>
           
-          <div className="flex justify-end mb-4">
+          <div className="flex justify-between mb-4">
+            <button
+              onClick={refreshData}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+            >
+              {locale === 'en' ? 'Refresh Data' : '刷新数据'}
+            </button>
             <Link 
               href="/admin/games/add" 
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
@@ -159,11 +182,17 @@ export default function AdminDashboardPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button 
                           onClick={() => toggleGameStatus(game.id)}
-                          className={`mr-2 px-3 py-1 rounded ${game.active ? 'bg-red-100 hover:bg-red-200 text-red-700' : 'bg-green-100 hover:bg-green-200 text-green-700'}`}
+                          disabled={game.isToggling}
+                          className={`mr-2 px-3 py-1 rounded ${
+                            game.isToggling ? 'bg-gray-300 text-gray-600' :
+                            game.active ? 'bg-red-100 hover:bg-red-200 text-red-700' : 'bg-green-100 hover:bg-green-200 text-green-700'
+                          }`}
                         >
-                          {game.active 
-                            ? (locale === 'en' ? 'Hide' : '隐藏') 
-                            : (locale === 'en' ? 'Show' : '显示')}
+                          {game.isToggling 
+                            ? (locale === 'en' ? 'Updating...' : '更新中...') 
+                            : game.active 
+                              ? (locale === 'en' ? 'Hide' : '隐藏') 
+                              : (locale === 'en' ? 'Show' : '显示')}
                         </button>
                         <Link 
                           href={`/admin/games/edit/${game.id}`}
