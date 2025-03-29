@@ -239,17 +239,28 @@
       
       // 设置iframe源
       const gameFrame = document.getElementById('gameFrame');
-      gameFrame.src = gameData.iframeUrl;
+      
+      // 添加错误处理
+      try {
+        console.log("加载游戏:", gameData.iframeUrl);
+        gameFrame.src = gameData.iframeUrl;
+      } catch (error) {
+        console.error("设置iframe src失败:", error);
+        showError("游戏链接无效");
+        return;
+      }
       
       // 设置iframe加载事件
       gameFrame.onload = function() {
+        console.log("游戏iframe加载完成");
         // 隐藏加载状态，显示iframe
         document.getElementById('loading').style.display = 'none';
         document.getElementById('iframeContainer').style.display = 'block';
       };
       
       // 设置iframe错误处理
-      gameFrame.onerror = function() {
+      gameFrame.onerror = function(error) {
+        console.error("iframe加载错误:", error);
         showError('游戏加载失败');
       };
       
@@ -258,9 +269,14 @@
       
       // 设置刷新按钮事件
       document.getElementById('refreshBtn').addEventListener('click', () => {
-        gameFrame.src = gameData.iframeUrl;
-        document.getElementById('loading').style.display = 'block';
-        document.getElementById('iframeContainer').style.display = 'none';
+        try {
+          gameFrame.src = gameData.iframeUrl;
+          document.getElementById('loading').style.display = 'block';
+          document.getElementById('iframeContainer').style.display = 'none';
+        } catch (error) {
+          console.error("刷新游戏失败:", error);
+          showError("无法刷新游戏");
+        }
       });
       
       // 更新返回按钮文本

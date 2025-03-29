@@ -278,8 +278,11 @@
         const storedFavorites = localStorage.getItem('favorites');
         favorites = storedFavorites ? JSON.parse(storedFavorites) : [];
         
+        console.log("已加载收藏列表:", favorites);
+        
         // 如果没有收藏
-        if (favorites.length === 0) {
+        if (!favorites || favorites.length === 0) {
+          console.log("没有收藏的游戏");
           document.getElementById('loading').style.display = 'none';
           document.getElementById('noFavorites').style.display = 'block';
           return;
@@ -287,6 +290,7 @@
         
         // 使用内嵌数据加载游戏
         games = gamesData.games;
+        console.log("已加载游戏数据:", games.length);
         
         // 渲染收藏的游戏
         renderFavorites();
@@ -313,9 +317,11 @@
       
       // 过滤出收藏的游戏
       const favoriteGames = games.filter(game => favorites.includes(game.id));
+      console.log("过滤出的收藏游戏:", favoriteGames.length);
       
       // 如果没有收藏的游戏
-      if (favoriteGames.length === 0) {
+      if (!favoriteGames || favoriteGames.length === 0) {
+        console.log("过滤后没有找到收藏的游戏");
         document.getElementById('favoriteGrid').style.display = 'none';
         document.getElementById('noFavorites').style.display = 'block';
         return;
