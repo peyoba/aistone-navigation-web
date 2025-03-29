@@ -6,6 +6,10 @@
   <title>游戏管理 - AI Stone 游戏导航</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/admin.css">
+  <!-- 引入刷新监控脚本 - 必须放在最前面 -->
+  <script src="/js/refresh-monitor.js"></script>
+  <!-- 引入数据服务 -->
+  <script src="/js/data-service.js"></script>
 </head>
 <body>
   <header class="main-header">
@@ -40,7 +44,7 @@
           </select>
         </div>
         <div class="action-buttons">
-          <button class="btn btn-primary" onclick="location.href='/admin/upload.html'">添加游戏</button>
+          <button class="btn btn-primary" id="addGameBtn">添加游戏</button>
         </div>
       </div>
       
@@ -152,13 +156,40 @@
     </div>
   </div>
   
-  <script src="/js/app.js"></script>
   <script src="/js/admin.js"></script>
   <script>
+    // 全局变量
+    let currentGames = [];
+    let currentCategories = [];
+    let currentLang = 'zh';
+    let isUpdating = false; // 防止更新循环
+    
+    // 加载状态控制
+    const loadingStates = {
+      initialized: false,
+      dataLoaded: false,
+      uiRendered: false
+    };
+    
     // 页面加载完成后执行
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+      // 检查页面是否已经处理过，防止重复初始化
+      if (window._pageInitialized) {
+        console.warn("检测到页面重复初始化尝试，已阻止");
+        return;
+      }
+      
+      // 标记页面已初始化
+      window._pageInitialized = true;
+      console.log("管理页面初始化...");
+      
+      // 初始化数据服务
+      await dataService.initialize();
+      loadingStates.initialized = true;
+      
       // 检查登录状态
       const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      console.log("管理员登录状态:", isLoggedIn);
       
       if (!isLoggedIn) {
         // 未登录，显示警告
@@ -167,8 +198,14 @@
         // 已登录，显示游戏管理面板
         document.getElementById('gamesPanel').style.display = 'block';
         
-        // 加载游戏数据
-        loadGamesList();
+        // 获取当前语言
+        currentLang = localStorage.getItem('locale') || 'zh';
+        
+        // 从数据服务加载游戏和分类数据
+        loadData();
+        
+        // 注册数据更新事件监听
+        dataService.addEventListener('data-updated', onDataUpdated);
         
         // 初始化搜索和筛选功能
         initSearchAndFilter();
@@ -178,655 +215,580 @@
         
         // 初始化删除对话框
         initDeleteModal();
+        
+        // 添加游戏按钮事件
+        const addGameBtn = document.getElementById('addGameBtn');
+        if (addGameBtn) {
+          addGameBtn.addEventListener('click', function() {
+            openNewGameModal();
+          });
+        }
       }
       
       // 初始化语言切换按钮
       const toggleLangButton = document.getElementById('toggleLang');
       if (toggleLangButton) {
+        toggleLangButton.textContent = currentLang === 'zh' ? 'English' : '中文';
         toggleLangButton.addEventListener('click', toggleLanguage);
       }
     });
     
     /**
-     * 加载游戏列表
+     * 加载数据
      */
-    function loadGamesList() {
-      try {
-        // 检查是否有全局游戏数据
-        if (!window.gamesData || !Array.isArray(window.gamesData) || window.gamesData.length === 0) {
-          // 如果全局数据不存在或为空，尝试获取应用中的游戏数据
-          const builtInGames = [];
-          if (window.appData && window.appData.games) {
-            builtInGames.push(...window.appData.games);
-          }
-          
-          // 加载自定义游戏数据
-          const customGamesStr = localStorage.getItem('customGames');
-          const customGames = customGamesStr ? JSON.parse(customGamesStr) : [];
-          
-          // 合并所有游戏数据
-          window.gamesData = [...builtInGames, ...customGames];
-        }
-        
-        // 渲染游戏表格
-        renderGamesTable(window.gamesData);
-        
-        // 填充分类筛选器
-        populateCategoryFilter();
-      } catch (error) {
-        console.error('加载游戏列表失败:', error);
-        showAlert('加载游戏数据失败，请刷新页面重试。', 'danger');
-      }
-    }
-    
-    /**
-     * 渲染游戏表格
-     * @param {Array} games - 游戏数据数组
-     */
-    function renderGamesTable(games) {
-      const tableBody = document.getElementById('gamesTableBody');
-      const currentLang = localStorage.getItem('locale') || 'zh';
-      
-      // 清空表格内容
-      tableBody.innerHTML = '';
-      
-      if (!games || games.length === 0) {
-        // 如果没有游戏，显示空消息
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `
-          <td colspan="7" style="text-align: center; padding: 30px;">
-            暂无游戏数据。<a href="/admin/upload.html">点击这里</a>添加游戏。
-          </td>
-        `;
-        tableBody.appendChild(emptyRow);
+    function loadData() {
+      // 防止重复加载
+      if (isUpdating) {
+        console.warn("检测到重复数据加载请求，已忽略");
         return;
       }
       
-      // 按时间倒序排列游戏
-      const sortedGames = [...games].sort((a, b) => {
-        return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
-      });
+      isUpdating = true;
       
-      // 为每个游戏创建表格行
-      sortedGames.forEach((game, index) => {
-        const row = document.createElement('tr');
-        row.dataset.gameId = game.id;
+      try {
+        // 从数据服务获取游戏和分类数据
+        currentGames = dataService.getAllGames();
+        currentCategories = dataService.getAllCategories();
         
-        // 判断是否为自定义游戏（可编辑）
-        const isCustomGame = !!(localStorage.getItem('customGames') && 
-          JSON.parse(localStorage.getItem('customGames')).find(g => g.id === game.id));
+        console.log("已加载游戏数据:", currentGames.length, "游戏");
         
-        // 获取分类名称
-        let categoryName = '未分类';
-        const category = window.categoriesData?.find(c => c.id === game.category);
-        if (category && category.name) {
-          categoryName = category.name[currentLang] || category.name.en || category.id;
-        }
+        loadingStates.dataLoaded = true;
         
-        // 设置行内容
-        row.innerHTML = `
-          <td>${index + 1}</td>
-          <td>
-            <img src="${game.thumbnail || '/images/placeholder.jpg'}" alt="${game.title[currentLang]}" 
-                 style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
-          </td>
-          <td>${game.title[currentLang] || game.title.en}</td>
-          <td>${game.description[currentLang] || game.description.en}</td>
-          <td>${categoryName}</td>
-          <td>
-            <span class="status-badge ${game.active ? 'status-active' : 'status-inactive'}">
-              ${game.active ? '启用' : '禁用'}
-            </span>
-          </td>
-          <td class="table-actions">
-            <button class="btn btn-secondary btn-sm view-game" data-id="${game.id}" title="查看游戏">👁️</button>
-            ${isCustomGame ? `
-              <button class="btn btn-primary btn-sm edit-game" data-id="${game.id}" title="编辑游戏">✏️</button>
-              <button class="btn btn-danger btn-sm delete-game" data-id="${game.id}" title="删除游戏">🗑️</button>
-            ` : `
-              <button class="btn btn-secondary btn-sm" disabled title="内置游戏无法修改">🔒</button>
-            `}
-          </td>
-        `;
-        
-        tableBody.appendChild(row);
-      });
-      
-      // 为按钮添加事件监听器
-      addTableButtonListeners();
+        // 更新UI
+        updateUI();
+      } catch (error) {
+        console.error("加载游戏列表失败:", error);
+        showAlert("加载游戏数据失败: " + error.message, "danger");
+      } finally {
+        // 确保isUpdating标志被重置
+        setTimeout(() => {
+          isUpdating = false;
+        }, 100);
+      }
     }
     
     /**
-     * 为表格中的按钮添加事件监听器
+     * 更新UI
      */
-    function addTableButtonListeners() {
-      // 查看游戏按钮
-      document.querySelectorAll('.view-game').forEach(button => {
-        button.addEventListener('click', function() {
-          const gameId = this.dataset.id;
-          window.open(`/game/index.html?id=${gameId}`, '_blank');
-        });
-      });
-      
-      // 编辑游戏按钮
-      document.querySelectorAll('.edit-game').forEach(button => {
-        button.addEventListener('click', function() {
-          const gameId = this.dataset.id;
-          openEditModal(gameId);
-        });
-      });
-      
-      // 删除游戏按钮
-      document.querySelectorAll('.delete-game').forEach(button => {
-        button.addEventListener('click', function() {
-          const gameId = this.dataset.id;
-          openDeleteModal(gameId);
-        });
-      });
-    }
-    
-    /**
-     * 填充分类筛选器
-     */
-    function populateCategoryFilter() {
-      const categoryFilter = document.getElementById('categoryFilter');
-      const currentLang = localStorage.getItem('locale') || 'zh';
-      
-      // 尝试获取分类数据
-      let categories = [];
-      if (window.categoriesData && Array.isArray(window.categoriesData)) {
-        categories = window.categoriesData;
-      } else if (window.appData && window.appData.categories) {
-        categories = window.appData.categories;
+    function updateUI() {
+      if (!loadingStates.dataLoaded) {
+        console.warn("尝试在数据加载前更新UI，已忽略");
+        return;
       }
       
-      // 如果有分类数据，填充下拉框
-      if (categories.length > 0) {
-        // 保留第一个"全部分类"选项
-        categoryFilter.innerHTML = `<option value="">全部分类</option>`;
-        
-        // 添加每个分类作为选项
-        categories.forEach(category => {
+      // 更新分类过滤器选项
+      updateCategoryFilter();
+      
+      // 渲染游戏列表
+      renderGamesList(currentGames);
+      
+      loadingStates.uiRendered = true;
+    }
+    
+    /**
+     * 数据更新事件处理函数
+     */
+    function onDataUpdated() {
+      console.log("检测到数据更新，刷新游戏列表");
+      
+      // 防止重复更新
+      if (isUpdating) {
+        console.warn("检测到重复数据更新请求，已忽略");
+        return;
+      }
+      
+      // 重新加载数据
+      loadData();
+    }
+    
+    /**
+     * 更新分类过滤器选项
+     */
+    function updateCategoryFilter() {
+      const categoryFilter = document.getElementById('categoryFilter');
+      if (!categoryFilter) return;
+      
+      // 清空现有选项（保留第一个"全部分类"选项）
+      while (categoryFilter.options.length > 1) {
+        categoryFilter.remove(1);
+      }
+      
+      // 添加分类选项
+      currentCategories.forEach(category => {
+        if (category.id !== 'all') {
           const option = document.createElement('option');
           option.value = category.id;
-          option.textContent = category.name[currentLang] || category.name.en || category.id;
+          option.textContent = category.name[currentLang] || category.id;
           categoryFilter.appendChild(option);
-        });
-        
-        // 同样填充编辑表单的分类选择器
-        const editCategorySelect = document.getElementById('editGameCategory');
-        if (editCategorySelect) {
-          editCategorySelect.innerHTML = '';
-          categories.forEach(category => {
-            const option = document.createElement('option');
-            option.value = category.id;
-            option.textContent = category.name[currentLang] || category.name.en || category.id;
-            editCategorySelect.appendChild(option);
-          });
         }
-      }
+      });
     }
     
     /**
-     * 初始化搜索和筛选功能
+     * 初始化搜索和过滤功能
      */
     function initSearchAndFilter() {
-      // 搜索功能
       const searchInput = document.getElementById('searchGames');
       if (searchInput) {
-        searchInput.addEventListener('input', function() {
-          applyFilters();
-        });
+        searchInput.addEventListener('input', filterGamesList);
       }
       
-      // 分类筛选
       const categoryFilter = document.getElementById('categoryFilter');
       if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-          applyFilters();
-        });
+        categoryFilter.addEventListener('change', filterGamesList);
       }
     }
     
     /**
-     * 应用搜索和筛选条件
+     * 过滤游戏列表
      */
-    function applyFilters() {
-      const searchTerm = document.getElementById('searchGames').value.toLowerCase();
-      const categoryValue = document.getElementById('categoryFilter').value;
-      const currentLang = localStorage.getItem('locale') || 'zh';
+    function filterGamesList() {
+      const searchInput = document.getElementById('searchGames');
+      const categoryFilter = document.getElementById('categoryFilter');
       
-      // 复制原始游戏数据进行筛选
-      let filteredGames = [...window.gamesData];
+      if (!searchInput || !categoryFilter) return;
       
-      // 应用搜索条件
-      if (searchTerm) {
-        filteredGames = filteredGames.filter(game => {
-          // 在标题和描述中搜索
-          const titleMatch = game.title[currentLang]?.toLowerCase().includes(searchTerm) || 
-                           game.title.en?.toLowerCase().includes(searchTerm);
+      const searchTerm = searchInput.value.toLowerCase();
+      const categoryId = categoryFilter.value;
+      
+      try {
+        // 根据搜索词和分类过滤游戏
+        const filteredGames = currentGames.filter(game => {
+          // 检查游戏对象是否有效
+          if (!game || !game.title || !game.description) return false;
           
-          const descMatch = game.description[currentLang]?.toLowerCase().includes(searchTerm) || 
-                          game.description.en?.toLowerCase().includes(searchTerm);
-                          
-          return titleMatch || descMatch;
+          const matchesSearch = 
+            (game.title.zh && game.title.zh.toLowerCase().includes(searchTerm)) || 
+            (game.title.en && game.title.en.toLowerCase().includes(searchTerm)) ||
+            (game.description.zh && game.description.zh.toLowerCase().includes(searchTerm)) ||
+            (game.description.en && game.description.en.toLowerCase().includes(searchTerm)) ||
+            (game.id && game.id.toLowerCase().includes(searchTerm));
+            
+          const matchesCategory = categoryId ? game.category === categoryId : true;
+          
+          return matchesSearch && matchesCategory;
         });
+        
+        renderGamesList(filteredGames);
+      } catch (error) {
+        console.error("过滤游戏列表失败:", error);
+        showAlert("过滤游戏列表时出错", "danger");
       }
+    }
+    
+    /**
+     * 渲染游戏列表
+     * @param {Array} games 要渲染的游戏数组
+     */
+    function renderGamesList(games) {
+      const tableBody = document.getElementById('gamesTableBody');
+      if (!tableBody) return;
       
-      // 应用分类筛选
-      if (categoryValue) {
-        filteredGames = filteredGames.filter(game => game.category === categoryValue);
+      try {
+        tableBody.innerHTML = '';
+        
+        if (!games || games.length === 0) {
+          const emptyRow = document.createElement('tr');
+          emptyRow.innerHTML = `
+            <td colspan="7" class="text-center">
+              <p>没有找到游戏</p>
+            </td>
+          `;
+          tableBody.appendChild(emptyRow);
+          return;
+        }
+        
+        // 渲染每个游戏的行
+        games.forEach(game => {
+          try {
+            const row = document.createElement('tr');
+            
+            // 获取分类名称
+            const category = currentCategories.find(c => c.id === game.category);
+            const categoryName = category ? 
+              (category.name[currentLang] || category.id) : (game.category || '未分类');
+            
+            // 确保所有属性都有默认值，防止undefined
+            const title = game.title?.[currentLang] || game.title?.en || '未命名游戏';
+            const description = game.description?.[currentLang] || game.description?.en || '暂无描述';
+            const thumbnailSrc = game.thumbnail || '/images/placeholder.jpg';
+            const isActive = !!game.active;
+            
+            row.innerHTML = `
+              <td>${game.id || '未知ID'}</td>
+              <td>
+                <img src="${thumbnailSrc}" 
+                     alt="${title}" 
+                     class="game-thumbnail" 
+                     onerror="this.src='/images/placeholder.jpg'">
+              </td>
+              <td>${title}</td>
+              <td>${description}</td>
+              <td>${categoryName}</td>
+              <td>
+                <span class="status-badge ${isActive ? 'active' : 'inactive'}">
+                  ${isActive ? '启用' : '禁用'}
+                </span>
+              </td>
+              <td>
+                <button class="btn btn-sm btn-primary edit-game" data-id="${game.id}">编辑</button>
+                <button class="btn btn-sm btn-danger delete-game" data-id="${game.id}">删除</button>
+              </td>
+            `;
+            
+            // 添加编辑按钮事件
+            const editBtn = row.querySelector('.edit-game');
+            if (editBtn) {
+              editBtn.addEventListener('click', function() {
+                openEditModal(game.id);
+              });
+            }
+            
+            // 添加删除按钮事件
+            const deleteBtn = row.querySelector('.delete-game');
+            if (deleteBtn) {
+              deleteBtn.addEventListener('click', function() {
+                openDeleteModal(game.id);
+              });
+            }
+            
+            tableBody.appendChild(row);
+          } catch (error) {
+            console.error("渲染游戏行失败:", error, game);
+          }
+        });
+      } catch (error) {
+        console.error("渲染游戏列表失败:", error);
+        showAlert("渲染游戏列表时出错", "danger");
       }
-      
-      // 重新渲染表格
-      renderGamesTable(filteredGames);
     }
     
     /**
      * 初始化编辑对话框
      */
     function initEditModal() {
-      // 获取对话框元素
-      const modal = document.getElementById('editGameModal');
-      
-      // 关闭按钮事件
-      const closeButtons = modal.querySelectorAll('.close-modal');
-      closeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          modal.style.display = 'none';
+      try {
+        // 关闭按钮事件
+        document.querySelectorAll('.close-modal').forEach(button => {
+          button.addEventListener('click', closeModal);
         });
-      });
-      
-      // 点击对话框外部关闭
-      window.addEventListener('click', function(event) {
-        if (event.target === modal) {
-          modal.style.display = 'none';
+        
+        // 表单提交事件
+        const editForm = document.getElementById('editGameForm');
+        if (editForm) {
+          editForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            saveGameChanges();
+          });
         }
-      });
-      
-      // 表单提交事件
-      const form = document.getElementById('editGameForm');
-      form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveGameChanges();
-      });
-    }
-    
-    /**
-     * 打开编辑游戏对话框
-     * @param {string} gameId - 游戏ID
-     */
-    function openEditModal(gameId) {
-      // 获取要编辑的游戏数据
-      const game = window.gamesData.find(g => g.id === gameId);
-      if (!game) {
-        showAlert('未找到游戏数据', 'danger');
-        return;
+        
+        // 加载分类下拉选项
+        loadCategoryOptions();
+      } catch (error) {
+        console.error("初始化编辑对话框失败:", error);
       }
-      
-      // 填充表单字段
-      document.getElementById('editGameId').value = game.id;
-      document.getElementById('editGameTitleZh').value = game.title.zh || '';
-      document.getElementById('editGameTitleEn').value = game.title.en || '';
-      document.getElementById('editGameDescZh').value = game.description.zh || '';
-      document.getElementById('editGameDescEn').value = game.description.en || '';
-      document.getElementById('editGameCategory').value = game.category || '';
-      document.getElementById('editGameUrl').value = game.iframeUrl || '';
-      document.getElementById('editGameStatus').value = game.active.toString();
-      
-      // 显示对话框
-      document.getElementById('editGameModal').style.display = 'block';
     }
     
     /**
-     * 保存游戏编辑更改
+     * 加载分类下拉选项
      */
-    function saveGameChanges() {
-      // 获取表单数据
-      const gameId = document.getElementById('editGameId').value;
-      
-      // 准备更新后的游戏数据
-      const updatedGame = {
-        id: gameId,
-        title: {
-          zh: document.getElementById('editGameTitleZh').value,
-          en: document.getElementById('editGameTitleEn').value
-        },
-        description: {
-          zh: document.getElementById('editGameDescZh').value,
-          en: document.getElementById('editGameDescEn').value
-        },
-        category: document.getElementById('editGameCategory').value,
-        iframeUrl: document.getElementById('editGameUrl').value,
-        active: document.getElementById('editGameStatus').value === 'true',
-        dateModified: new Date().toISOString()
-      };
+    function loadCategoryOptions() {
+      const categorySelect = document.getElementById('editGameCategory');
+      if (!categorySelect) return;
       
       try {
-        // 获取自定义游戏列表
-        const customGames = JSON.parse(localStorage.getItem('customGames') || '[]');
+        categorySelect.innerHTML = '';
         
-        // 查找要更新的游戏索引
-        const gameIndex = customGames.findIndex(g => g.id === gameId);
+        // 添加分类选项（排除"all"分类）
+        currentCategories.forEach(category => {
+          if (category.id !== 'all') {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name[currentLang] || category.id;
+            categorySelect.appendChild(option);
+          }
+        });
+      } catch (error) {
+        console.error("加载分类选项失败:", error);
+      }
+    }
+    
+    /**
+     * 打开新游戏添加对话框
+     */
+    function openNewGameModal() {
+      try {
+        // 创建新游戏ID（使用时间戳）
+        const newGameId = 'game_' + Date.now().toString();
         
-        if (gameIndex === -1) {
-          showAlert('未找到要更新的游戏', 'danger');
+        // 重置表单字段
+        document.getElementById('editGameId').value = newGameId;
+        document.getElementById('editGameTitleZh').value = '';
+        document.getElementById('editGameTitleEn').value = '';
+        document.getElementById('editGameDescZh').value = '';
+        document.getElementById('editGameDescEn').value = '';
+        document.getElementById('editGameCategory').value = document.getElementById('editGameCategory').options[0].value;
+        document.getElementById('editGameUrl').value = '';
+        document.getElementById('editGameStatus').value = 'true';
+        
+        // 更新对话框标题
+        const modalTitle = document.querySelector('#editGameModal .modal-header h3');
+        if (modalTitle) {
+          modalTitle.textContent = '添加新游戏';
+        }
+        
+        // 显示对话框
+        document.getElementById('editGameModal').style.display = 'block';
+      } catch (error) {
+        console.error("打开新游戏对话框失败:", error);
+        showAlert("打开新游戏对话框失败", "danger");
+      }
+    }
+    
+    /**
+     * 打开编辑对话框
+     * @param {string} gameId 游戏ID
+     */
+    function openEditModal(gameId) {
+      try {
+        // 查找游戏
+        const game = dataService.getGameById(gameId);
+        
+        if (!game) {
+          console.error("找不到要编辑的游戏:", gameId);
+          showAlert("找不到要编辑的游戏", "danger");
           return;
         }
         
-        // 保留原始游戏对象中的其他字段
-        const originalGame = customGames[gameIndex];
-        
-        // 合并更新
-        customGames[gameIndex] = {
-          ...originalGame,
-          ...updatedGame,
-          dateAdded: originalGame.dateAdded, // 保留原添加日期
-          thumbnail: originalGame.thumbnail // 保留原缩略图
-        };
-        
-        // 保存回本地存储
-        localStorage.setItem('customGames', JSON.stringify(customGames));
-        
-        // 更新全局游戏数据
-        const globalGameIndex = window.gamesData.findIndex(g => g.id === gameId);
-        if (globalGameIndex !== -1) {
-          window.gamesData[globalGameIndex] = customGames[gameIndex];
+        // 更新对话框标题
+        const modalTitle = document.querySelector('#editGameModal .modal-header h3');
+        if (modalTitle) {
+          modalTitle.textContent = '编辑游戏';
         }
         
-        // 关闭对话框
-        document.getElementById('editGameModal').style.display = 'none';
+        // 填充表单字段
+        document.getElementById('editGameId').value = game.id;
+        document.getElementById('editGameTitleZh').value = game.title.zh || '';
+        document.getElementById('editGameTitleEn').value = game.title.en || '';
+        document.getElementById('editGameDescZh').value = game.description.zh || '';
+        document.getElementById('editGameDescEn').value = game.description.en || '';
+        document.getElementById('editGameCategory').value = game.category || '';
+        document.getElementById('editGameUrl').value = game.iframeUrl || '';
+        document.getElementById('editGameStatus').value = game.active.toString();
         
-        // 刷新表格
-        renderGamesTable(window.gamesData);
-        
-        // 显示成功消息
-        showAlert('游戏信息已成功更新！', 'success');
+        // 显示对话框
+        document.getElementById('editGameModal').style.display = 'block';
       } catch (error) {
-        console.error('保存游戏更改失败:', error);
-        showAlert('保存游戏更改失败。', 'danger');
+        console.error("打开编辑对话框失败:", error);
+        showAlert("打开编辑对话框失败: " + error.message, "danger");
       }
     }
     
     /**
-     * 初始化删除确认对话框
+     * 关闭所有对话框
+     */
+    function closeModal() {
+      try {
+        document.getElementById('editGameModal').style.display = 'none';
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+      } catch (error) {
+        console.error("关闭对话框失败:", error);
+      }
+    }
+    
+    /**
+     * 保存游戏更改
+     */
+    function saveGameChanges() {
+      try {
+        // 收集表单数据
+        const gameId = document.getElementById('editGameId').value;
+        const titleZh = document.getElementById('editGameTitleZh').value;
+        const titleEn = document.getElementById('editGameTitleEn').value;
+        const descZh = document.getElementById('editGameDescZh').value;
+        const descEn = document.getElementById('editGameDescEn').value;
+        const category = document.getElementById('editGameCategory').value;
+        const iframeUrl = document.getElementById('editGameUrl').value;
+        const active = document.getElementById('editGameStatus').value === 'true';
+        
+        // 验证必填字段
+        if (!gameId || !titleZh || !titleEn || !descZh || !descEn || !category || !iframeUrl) {
+          showAlert("请填写所有必填字段", "warning");
+          return;
+        }
+        
+        // 查找现有游戏
+        const existingGame = dataService.getGameById(gameId);
+        const isNewGame = !existingGame;
+        
+        // 准备游戏数据
+        const gameData = {
+          id: gameId,
+          title: {
+            zh: titleZh,
+            en: titleEn
+          },
+          description: {
+            zh: descZh,
+            en: descEn
+          },
+          iframeUrl: iframeUrl,
+          thumbnail: existingGame ? existingGame.thumbnail : '/images/placeholder.jpg',
+          category: category,
+          active: active,
+          dateAdded: existingGame ? existingGame.dateAdded : new Date().toISOString()
+        };
+        
+        // 保存游戏数据
+        const success = dataService.saveGame(gameData);
+        
+        if (success) {
+          showAlert(isNewGame ? "游戏添加成功" : "游戏更新成功", "success");
+          closeModal();
+          
+          // 数据已更新事件会自动触发列表更新
+        } else {
+          showAlert("保存游戏失败", "danger");
+        }
+      } catch (error) {
+        console.error("保存游戏更改失败:", error);
+        showAlert("保存失败: " + error.message, "danger");
+      }
+    }
+    
+    /**
+     * 初始化删除对话框
      */
     function initDeleteModal() {
-      // 获取对话框元素
-      const modal = document.getElementById('deleteConfirmModal');
-      
-      // 关闭按钮事件
-      const closeButtons = modal.querySelectorAll('.close-modal');
-      closeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-          modal.style.display = 'none';
-        });
-      });
-      
-      // 点击对话框外部关闭
-      window.addEventListener('click', function(event) {
-        if (event.target === modal) {
-          modal.style.display = 'none';
+      try {
+        // 确认删除按钮事件
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmBtn) {
+          confirmBtn.addEventListener('click', confirmDeleteGame);
         }
-      });
-      
-      // 确认删除按钮事件
-      const confirmButton = document.getElementById('confirmDeleteBtn');
-      confirmButton.addEventListener('click', function() {
-        deleteGame(this.dataset.gameId);
-      });
+      } catch (error) {
+        console.error("初始化删除对话框失败:", error);
+      }
     }
     
     /**
      * 打开删除确认对话框
-     * @param {string} gameId - 游戏ID
+     * @param {string} gameId 游戏ID
      */
     function openDeleteModal(gameId) {
-      // 获取要删除的游戏数据
-      const game = window.gamesData.find(g => g.id === gameId);
-      if (!game) {
-        showAlert('未找到游戏数据', 'danger');
-        return;
-      }
-      
-      const currentLang = localStorage.getItem('locale') || 'zh';
-      
-      // 设置游戏名称
-      document.getElementById('deleteGameName').textContent = game.title[currentLang] || game.title.en;
-      
-      // 设置确认按钮的游戏ID
-      document.getElementById('confirmDeleteBtn').dataset.gameId = gameId;
-      
-      // 显示对话框
-      document.getElementById('deleteConfirmModal').style.display = 'block';
-    }
-    
-    /**
-     * 删除游戏
-     * @param {string} gameId - 游戏ID
-     */
-    function deleteGame(gameId) {
       try {
-        // 获取自定义游戏列表
-        const customGames = JSON.parse(localStorage.getItem('customGames') || '[]');
+        // 查找游戏
+        const game = dataService.getGameById(gameId);
         
-        // 查找要删除的游戏索引
-        const gameIndex = customGames.findIndex(g => g.id === gameId);
-        
-        if (gameIndex === -1) {
-          showAlert('未找到要删除的游戏', 'danger');
+        if (!game) {
+          console.error("找不到要删除的游戏:", gameId);
+          showAlert("找不到要删除的游戏", "danger");
           return;
         }
         
-        // 删除游戏
-        customGames.splice(gameIndex, 1);
+        // 设置游戏ID为确认按钮的数据属性
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        confirmBtn.dataset.gameId = gameId;
         
-        // 保存回本地存储
-        localStorage.setItem('customGames', JSON.stringify(customGames));
+        // 设置游戏名称
+        document.getElementById('deleteGameName').textContent = game.title[currentLang] || game.title.en || gameId;
         
-        // 更新全局游戏数据
-        window.gamesData = window.gamesData.filter(g => g.id !== gameId);
-        
-        // 关闭对话框
-        document.getElementById('deleteConfirmModal').style.display = 'none';
-        
-        // 刷新表格
-        renderGamesTable(window.gamesData);
-        
-        // 显示成功消息
-        showAlert('游戏已成功删除！', 'success');
+        // 显示对话框
+        document.getElementById('deleteConfirmModal').style.display = 'block';
       } catch (error) {
-        console.error('删除游戏失败:', error);
-        showAlert('删除游戏失败。', 'danger');
+        console.error("打开删除对话框失败:", error);
+        showAlert("打开删除对话框失败: " + error.message, "danger");
       }
     }
     
     /**
-     * 显示提醒消息
-     * @param {string} message - 消息文本
-     * @param {string} type - 消息类型 (success, danger, warning, info)
+     * 确认删除游戏
      */
-    function showAlert(message, type) {
-      const alertContainer = document.getElementById('alertContainer');
-      
-      const alert = document.createElement('div');
-      alert.className = `alert alert-${type}`;
-      alert.textContent = message;
-      
-      // 添加关闭按钮
-      const closeBtn = document.createElement('span');
-      closeBtn.style.float = 'right';
-      closeBtn.style.cursor = 'pointer';
-      closeBtn.textContent = '×';
-      closeBtn.addEventListener('click', function() {
-        alert.remove();
-      });
-      
-      alert.appendChild(closeBtn);
-      alertContainer.prepend(alert);
-      
-      // 5秒后自动关闭
-      setTimeout(function() {
-        if (alert.parentNode) {
-          alert.remove();
+    function confirmDeleteGame() {
+      try {
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        const gameId = confirmBtn.dataset.gameId;
+        
+        if (!gameId) {
+          console.error("游戏ID无效");
+          return;
         }
-      }, 5000);
+        
+        // 执行删除
+        const success = dataService.deleteGame(gameId);
+        
+        if (success) {
+          showAlert("游戏已成功删除", "success");
+          closeModal();
+          
+          // 数据更新事件会自动触发列表更新
+        } else {
+          showAlert("删除游戏失败", "danger");
+        }
+      } catch (error) {
+        console.error("删除游戏失败:", error);
+        showAlert("删除失败: " + error.message, "danger");
+      }
     }
     
     /**
-     * 切换界面语言
+     * 切换语言
      */
     function toggleLanguage() {
-      // 获取当前语言
-      let currentLang = localStorage.getItem('locale') || 'zh';
-      
-      // 切换语言
-      currentLang = currentLang === 'zh' ? 'en' : 'zh';
-      localStorage.setItem('locale', currentLang);
-      
-      // 更新按钮文本
-      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
-      
-      // 刷新页面显示
-      populateCategoryFilter();
-      renderGamesTable(window.gamesData);
-      updateUIText();
+      try {
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        localStorage.setItem('locale', currentLang);
+        
+        // 更新语言按钮文本
+        const langToggleBtn = document.getElementById('toggleLang');
+        if (langToggleBtn) {
+          langToggleBtn.textContent = currentLang === 'zh' ? 'English' : '中文';
+        }
+        
+        // 重新加载界面
+        loadData();
+      } catch (error) {
+        console.error("切换语言失败:", error);
+        showAlert("切换语言失败", "danger");
+      }
     }
     
     /**
-     * 更新界面文本
+     * 显示提示消息
+     * @param {string} message 消息内容
+     * @param {string} type 消息类型 (success, danger, warning, info)
      */
-    function updateUIText() {
-      const currentLang = localStorage.getItem('locale') || 'zh';
-      
-      const translations = {
-        zh: {
-          'games.title': 'AI Stone 游戏导航 - 游戏管理',
-          'games.heading': '游戏管理',
-          'games.search': '搜索游戏...',
-          'games.all.categories': '全部分类',
-          'games.add': '添加游戏',
-          'games.loading': '加载游戏数据中...',
-          'games.empty': '暂无游戏数据。',
-          'games.click.here': '点击这里',
-          'games.add.game': '添加游戏。',
-          'games.status.active': '启用',
-          'games.status.inactive': '禁用',
-          'games.action.view': '查看游戏',
-          'games.action.edit': '编辑游戏',
-          'games.action.delete': '删除游戏',
-          'games.builtin': '内置游戏无法修改',
-          'games.edit.title': '编辑游戏',
-          'games.save': '保存更改',
-          'games.cancel': '取消',
-          'games.delete.confirm': '确认删除',
-          'games.delete.message': '您确定要删除游戏 "',
-          'games.delete.message2': '" 吗？此操作不可撤销。',
-          'games.confirm.delete': '确认删除',
-          'nav.home': '首页',
-          'nav.favorites': '收藏夹',
-          'nav.admin': '管理'
-        },
-        en: {
-          'games.title': 'AI Stone Game Navigation - Game Management',
-          'games.heading': 'Game Management',
-          'games.search': 'Search games...',
-          'games.all.categories': 'All Categories',
-          'games.add': 'Add Game',
-          'games.loading': 'Loading game data...',
-          'games.empty': 'No games available.',
-          'games.click.here': 'Click here',
-          'games.add.game': ' to add a game.',
-          'games.status.active': 'Active',
-          'games.status.inactive': 'Inactive',
-          'games.action.view': 'View Game',
-          'games.action.edit': 'Edit Game',
-          'games.action.delete': 'Delete Game',
-          'games.builtin': 'Built-in game cannot be modified',
-          'games.edit.title': 'Edit Game',
-          'games.save': 'Save Changes',
-          'games.cancel': 'Cancel',
-          'games.delete.confirm': 'Confirm Deletion',
-          'games.delete.message': 'Are you sure you want to delete the game "',
-          'games.delete.message2': '"? This action cannot be undone.',
-          'games.confirm.delete': 'Confirm Delete',
-          'nav.home': 'Home',
-          'nav.favorites': 'Favorites',
-          'nav.admin': 'Admin'
-        }
-      };
-      
-      // 设置页面标题
-      document.title = translations[currentLang]['games.title'];
-      document.querySelector('.site-title').textContent = translations[currentLang]['games.title'];
-      
-      // 更新导航链接
-      const navLinks = document.querySelectorAll('.main-nav a');
-      navLinks[0].textContent = translations[currentLang]['nav.home'];
-      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
-      navLinks[2].textContent = translations[currentLang]['nav.admin'];
-      
-      // 更新页面标题
-      document.querySelector('.admin-title').textContent = translations[currentLang]['games.heading'];
-      
-      // 更新搜索框占位符
-      document.getElementById('searchGames').placeholder = translations[currentLang]['games.search'];
-      
-      // 更新分类筛选器第一个选项
-      document.querySelector('#categoryFilter option:first-child').textContent = 
-        translations[currentLang]['games.all.categories'];
-      
-      // 更新添加游戏按钮
-      document.querySelector('.action-buttons .btn-primary').textContent = 
-        translations[currentLang]['games.add'];
+    function showAlert(message, type = 'info') {
+      try {
+        const alertContainer = document.getElementById('alertContainer');
+        if (!alertContainer) return;
         
-      // 更新游戏状态文本
-      document.querySelectorAll('.status-active').forEach(el => {
-        el.textContent = translations[currentLang]['games.status.active'];
-      });
-      
-      document.querySelectorAll('.status-inactive').forEach(el => {
-        el.textContent = translations[currentLang]['games.status.inactive'];
-      });
-      
-      // 更新对话框文本
-      if (document.querySelector('#editGameModal .modal-header h3')) {
-        document.querySelector('#editGameModal .modal-header h3').textContent = 
-          translations[currentLang]['games.edit.title'];
-      }
-      
-      if (document.querySelector('#editGameForm .btn-primary')) {
-        document.querySelector('#editGameForm .btn-primary').textContent = 
-          translations[currentLang]['games.save'];
-      }
-      
-      if (document.querySelector('#editGameForm .btn-secondary')) {
-        document.querySelector('#editGameForm .btn-secondary').textContent = 
-          translations[currentLang]['games.cancel'];
-      }
-      
-      // 更新删除确认对话框
-      if (document.querySelector('#deleteConfirmModal .modal-header h3')) {
-        document.querySelector('#deleteConfirmModal .modal-header h3').textContent = 
-          translations[currentLang]['games.delete.confirm'];
-      }
-      
-      const deleteMessageParts = document.querySelector('#deleteConfirmModal .modal-body p');
-      if (deleteMessageParts) {
-        deleteMessageParts.innerHTML = 
-          translations[currentLang]['games.delete.message'] + 
-          `<span id="deleteGameName"></span>` + 
-          translations[currentLang]['games.delete.message2'];
-      }
-      
-      if (document.querySelector('#confirmDeleteBtn')) {
-        document.querySelector('#confirmDeleteBtn').textContent = 
-          translations[currentLang]['games.confirm.delete'];
-      }
-      
-      if (document.querySelector('#deleteConfirmModal .btn-secondary')) {
-        document.querySelector('#deleteConfirmModal .btn-secondary').textContent = 
-          translations[currentLang]['games.cancel'];
+        const alertEl = document.createElement('div');
+        alertEl.className = `alert alert-${type}`;
+        alertEl.innerHTML = `
+          ${message}
+          <span class="close-alert">&times;</span>
+        `;
+        
+        // 添加关闭按钮事件
+        const closeBtn = alertEl.querySelector('.close-alert');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function() {
+            alertEl.remove();
+          });
+        }
+        
+        // 添加到容器
+        alertContainer.appendChild(alertEl);
+        
+        // 5秒后自动关闭
+        setTimeout(() => {
+          if (alertEl.parentNode) {
+            alertEl.remove();
+          }
+        }, 5000);
+      } catch (error) {
+        console.error("显示提示消息失败:", error);
       }
     }
   </script>

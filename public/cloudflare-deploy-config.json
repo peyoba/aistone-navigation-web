@@ -1,8 +1,8 @@
 {
   "build": {
-    "command": "npm run build",
+    "command": "mkdir -p out && cp -r public/* out/",
     "output_directory": "out",
-    "root_directory": "."
+    "root_directory": null
   },
   "routes": [
     { "pattern": "/game/*", "script": null, "serve": "/game/index.html" },
@@ -11,5 +11,16 @@
   ],
   "environment_variables": {
     "NODE_VERSION": "18.x"
+  },
+  "headers": {
+    "/**/*.html": {
+      "Cache-Control": "public, max-age=0, must-revalidate"
+    },
+    "/**/*.js": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    },
+    "/**/*.css": {
+      "Cache-Control": "public, max-age=31536000, immutable"
+    }
   }
 } 

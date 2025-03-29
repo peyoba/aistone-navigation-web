@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Stone 游戏导航 - 管理后台</title>
+  <title>管理后台 - AI Stone 游戏导航</title>
+  <!-- 引入刷新监控脚本 - 必须放在最前面 -->
+  <script src="/js/refresh-monitor.js"></script>
+  <!-- 引入数据服务 -->
+  <script src="/js/data-service.js"></script>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/admin.css">
   <script>
@@ -170,11 +174,12 @@
   
   <div class="admin-container">
     <!-- 登录面板 -->
-    <div class="admin-panel" id="loginPanel">
-      <h2>管理员登录</h2>
-      <div id="loginError" class="alert alert-danger" style="display: none;"></div>
+    <div id="loginPanel" class="admin-panel">
+      <h2 class="admin-title">管理员登录</h2>
       
-      <form class="login-form" id="loginForm">
+      <div id="alertContainer"></div>
+      
+      <form id="loginForm" class="admin-form">
         <div class="form-group">
           <label for="username">用户名</label>
           <input type="text" id="username" class="form-control" required>
@@ -186,280 +191,369 @@
         </div>
         
         <div class="form-group">
-          <button type="submit" class="btn-primary">登录</button>
+          <button type="submit" class="btn btn-primary">登录</button>
         </div>
       </form>
     </div>
     
-    <!-- 管理菜单 -->
-    <div class="admin-menu" id="adminMenu">
-      <div class="admin-card" onclick="location.href='/admin/games.html'">
-        <div class="admin-card-icon">🎮</div>
-        <h3>游戏管理</h3>
-        <p>添加、编辑和删除游戏</p>
+    <!-- 管理面板 -->
+    <div id="adminPanel" class="admin-panel" style="display: none;">
+      <h2 class="admin-title">管理控制台</h2>
+      
+      <div class="admin-menu">
+        <div class="menu-item">
+          <a href="/admin/games.html" class="admin-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                <polyline points="17 2 12 7 7 2"></polyline>
+              </svg>
+            </div>
+            <h3>游戏管理</h3>
+            <p>添加、编辑和删除游戏</p>
+          </a>
+        </div>
+        
+        <div class="menu-item">
+          <a href="/admin/categories.html" class="admin-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </div>
+            <h3>分类管理</h3>
+            <p>添加、编辑和删除游戏分类</p>
+          </a>
+        </div>
+        
+        <div class="menu-item">
+          <a href="/admin/settings.html" class="admin-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </div>
+            <h3>系统设置</h3>
+            <p>修改系统配置和用户设置</p>
+          </a>
+        </div>
+        
+        <div class="menu-item">
+          <button id="logoutBtn" class="admin-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </div>
+            <h3>退出登录</h3>
+            <p>安全退出管理后台</p>
+          </button>
+        </div>
       </div>
       
-      <div class="admin-card" onclick="location.href='/admin/categories.html'">
-        <div class="admin-card-icon">📊</div>
-        <h3>分类管理</h3>
-        <p>管理游戏分类</p>
+      <div class="admin-stats">
+        <div class="stats-card">
+          <h3>游戏总数</h3>
+          <div class="stats-value" id="totalGames">--</div>
+        </div>
+        
+        <div class="stats-card">
+          <h3>分类总数</h3>
+          <div class="stats-value" id="totalCategories">--</div>
+        </div>
+        
+        <div class="stats-card">
+          <h3>活跃游戏</h3>
+          <div class="stats-value" id="activeGames">--</div>
+        </div>
       </div>
-      
-      <div class="admin-card" onclick="location.href='/admin/upload.html'">
-        <div class="admin-card-icon">📤</div>
-        <h3>上传游戏</h3>
-        <p>添加新游戏到平台</p>
-      </div>
-      
-      <div class="admin-card" onclick="location.href='/admin/settings.html'">
-        <div class="admin-card-icon">⚙️</div>
-        <h3>网站设置</h3>
-        <p>管理网站基本设置</p>
-      </div>
-    </div>
-    
-    <!-- 数据同步状态面板 -->
-    <div class="admin-panel" id="syncPanel" style="display: none;">
-      <h2>数据同步状态</h2>
-      <p id="syncStatus">正在检查数据同步状态...</p>
-      <button id="syncDataButton" class="btn-primary" style="width: auto; margin-top: 15px;">同步前端数据</button>
-    </div>
-    
-    <!-- 调试面板 -->
-    <div class="debug-panel" id="debugPanel">
-      <h3>调试信息</h3>
-      <div class="debug-content" id="debugContent">准备中...</div>
     </div>
   </div>
   
+  <footer class="main-footer">
+    <p>&copy; 2023 AI Stone 游戏导航 - 管理后台</p>
+  </footer>
+  
   <script>
-    // 全局存储数据同步状态
-    let syncStatus = {
-      frontendData: null,
-      adminData: null,
-      lastSync: null
+    // 全局变量
+    let currentLang = 'zh';
+    let isUpdating = false; // 防止更新循环
+    
+    // 加载状态控制
+    const loadingStates = {
+      initialized: false,
+      dataLoaded: false,
+      uiRendered: false
     };
     
-    // 定义管理员登录函数，确保在全局范围内可用
-    function adminLogin(username, password) {
-      console.log("尝试登录:", username);
-      // 简单的验证逻辑，实际项目中应使用更安全的身份验证方式
-      if (username === 'admin' && password === 'password') {
-        localStorage.setItem('adminLoggedIn', 'true');
-        return true;
-      }
-      return false;
-    }
-    
-    // 显示提醒消息
-    function showAdminAlert(message, type = 'info') {
-      console.log("显示提醒:", message, type);
-      // 创建警告元素
-      const alertEl = document.createElement('div');
-      alertEl.style.position = 'fixed';
-      alertEl.style.top = '20px';
-      alertEl.style.right = '20px';
-      alertEl.style.padding = '10px 15px';
-      alertEl.style.borderRadius = '4px';
-      alertEl.style.zIndex = '1000';
-      alertEl.textContent = message;
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', async function() {
+      console.log("管理后台初始化...");
       
-      // 根据类型设置样式
-      if (type === 'success') {
-        alertEl.style.backgroundColor = '#dcfce7';
-        alertEl.style.color = '#166534';
-        alertEl.style.border = '1px solid #86efac';
-      } else if (type === 'error') {
-        alertEl.style.backgroundColor = '#fee2e2';
-        alertEl.style.color = '#b91c1c';
-        alertEl.style.border = '1px solid #f87171';
-      } else {
-        alertEl.style.backgroundColor = '#e0f2fe';
-        alertEl.style.color = '#0c4a6e';
-        alertEl.style.border = '1px solid #7dd3fc';
+      // 检查页面是否已经处理过，防止重复初始化
+      if (window._pageInitialized) {
+        console.warn("检测到页面重复初始化尝试，已阻止");
+        return;
       }
       
-      // 添加到文档
-      document.body.appendChild(alertEl);
+      // 标记页面已初始化
+      window._pageInitialized = true;
       
-      // 3秒后自动消失
-      setTimeout(() => {
-        alertEl.style.opacity = '0';
-        alertEl.style.transition = 'opacity 0.5s ease-out';
-        setTimeout(() => {
-          document.body.removeChild(alertEl);
-        }, 500);
-      }, 3000);
-    }
-    
-    // 添加调试信息
-    function addDebugInfo(info) {
-      const debugContent = document.getElementById('debugContent');
-      const timestamp = new Date().toLocaleTimeString();
-      debugContent.textContent += `[${timestamp}] ${info}\n`;
-      debugContent.scrollTop = debugContent.scrollHeight;
-    }
-    
-    // 显示登录错误
-    function showLoginError(message) {
-      const errorEl = document.getElementById('loginError');
-      errorEl.textContent = message;
-      errorEl.style.display = 'block';
-    }
-    
-    // 检查前端数据
-    function checkFrontendData() {
-      addDebugInfo("检查前端数据...");
-      
-      // 尝试从window.appData获取数据
-      if (window.appData && window.appData.games && window.appData.categories) {
-        syncStatus.frontendData = {
-          games: window.appData.games,
-          categories: window.appData.categories
-        };
-        addDebugInfo(`找到前端数据: ${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类`);
-        return true;
-      }
-      
-      // 如果直接访问管理页面，尝试从localStorage获取
       try {
-        const storedGames = localStorage.getItem('adminGames');
-        const storedCategories = localStorage.getItem('adminCategories');
+        // 初始化数据服务
+        await dataService.initialize();
+        loadingStates.initialized = true;
         
-        if (storedGames && storedCategories) {
-          syncStatus.adminData = {
-            games: JSON.parse(storedGames),
-            categories: JSON.parse(storedCategories)
-          };
-          addDebugInfo(`找到管理员存储的数据: ${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类`);
-          return true;
+        // 获取当前语言
+        currentLang = localStorage.getItem('locale') || 'zh';
+        
+        // 检查登录状态
+        checkLoginStatus();
+        
+        // 初始化登录表单
+        initLoginForm();
+        
+        // 初始化退出按钮
+        initLogoutButton();
+        
+        // 加载统计数据
+        loadStats();
+        
+        // 注册数据更新事件监听
+        dataService.addEventListener('data-updated', onDataUpdated);
+        
+        // 切换语言按钮
+        const toggleLangBtn = document.getElementById('toggleLang');
+        if (toggleLangBtn) {
+          toggleLangBtn.addEventListener('click', toggleLanguage);
+          
+          // 设置按钮文本
+          toggleLangBtn.textContent = currentLang === 'zh' ? 'English' : '中文';
         }
       } catch (error) {
-        addDebugInfo(`解析存储数据失败: ${error.message}`);
+        console.error("初始化失败:", error);
+        showAlert("初始化失败: " + error.message, "danger");
       }
-      
-      addDebugInfo("未找到数据");
-      return false;
-    }
+    });
     
-    // 同步前端数据到管理后台
-    function syncFrontendData() {
-      addDebugInfo("开始同步前端数据...");
-      
-      if (syncStatus.frontendData) {
-        // 保存到localStorage
-        localStorage.setItem('adminGames', JSON.stringify(syncStatus.frontendData.games));
-        localStorage.setItem('adminCategories', JSON.stringify(syncStatus.frontendData.categories));
+    /**
+     * 检查登录状态
+     */
+    function checkLoginStatus() {
+      try {
+        const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
         
-        syncStatus.adminData = {
-          games: syncStatus.frontendData.games,
-          categories: syncStatus.frontendData.categories
-        };
+        // 根据登录状态显示面板
+        document.getElementById('loginPanel').style.display = isLoggedIn ? 'none' : 'block';
+        document.getElementById('adminPanel').style.display = isLoggedIn ? 'block' : 'none';
         
-        syncStatus.lastSync = new Date().toISOString();
-        
-        addDebugInfo(`数据同步完成: ${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类`);
-        showAdminAlert("数据同步成功", "success");
-        
-        // 更新同步状态显示
-        updateSyncStatusDisplay();
-        
-        return true;
-      } else {
-        addDebugInfo("同步失败: 没有可用的前端数据");
-        showAdminAlert("同步失败: 没有可用的前端数据", "error");
+        return isLoggedIn;
+      } catch (error) {
+        console.error("检查登录状态失败:", error);
         return false;
       }
     }
     
-    // 更新同步状态显示
-    function updateSyncStatusDisplay() {
-      const statusEl = document.getElementById('syncStatus');
-      
-      if (syncStatus.lastSync) {
-        const lastSyncDate = new Date(syncStatus.lastSync);
-        statusEl.innerHTML = `
-          <strong>上次同步:</strong> ${lastSyncDate.toLocaleString()}<br>
-          <strong>前端数据:</strong> ${syncStatus.frontendData ? `${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类` : '无数据'}<br>
-          <strong>管理员数据:</strong> ${syncStatus.adminData ? `${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类` : '无数据'}
-        `;
-      } else {
-        statusEl.innerHTML = `
-          <strong>前端数据:</strong> ${syncStatus.frontendData ? `${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类` : '无数据'}<br>
-          <strong>管理员数据:</strong> ${syncStatus.adminData ? `${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类` : '无数据'}<br>
-          <strong>状态:</strong> ${syncStatus.frontendData && syncStatus.adminData ? '可以同步' : '数据不完整'}
-        `;
+    /**
+     * 初始化登录表单
+     */
+    function initLoginForm() {
+      try {
+        const loginForm = document.getElementById('loginForm');
+        if (!loginForm) return;
+        
+        loginForm.addEventListener('submit', function(event) {
+          event.preventDefault();
+          
+          const username = document.getElementById('username').value;
+          const password = document.getElementById('password').value;
+          
+          // 简单的登录验证（注意：这只是前端验证，实际应用中应该使用安全的后端验证）
+          if (username === 'admin' && password === 'admin123') {
+            // 登录成功
+            localStorage.setItem('adminLoggedIn', 'true');
+            
+            // 显示管理面板
+            checkLoginStatus();
+            
+            // 加载统计数据
+            loadStats();
+            
+            // 显示成功消息
+            showAlert("登录成功，欢迎进入管理后台", "success");
+          } else {
+            // 登录失败
+            showAlert("用户名或密码错误，请重试", "danger");
+          }
+        });
+      } catch (error) {
+        console.error("初始化登录表单失败:", error);
       }
     }
     
-    // 初始化页面
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log("DOM内容加载完成");
-      addDebugInfo("页面初始化...");
-      
-      // 检查登录状态
-      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
-      
-      if (isLoggedIn) {
-        // 已登录，显示管理菜单
-        document.getElementById('loginPanel').style.display = 'none';
-        document.getElementById('adminMenu').classList.add('active');
-        document.getElementById('syncPanel').style.display = 'block';
+    /**
+     * 初始化退出按钮
+     */
+    function initLogoutButton() {
+      try {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (!logoutBtn) return;
         
-        addDebugInfo("用户已登录");
-        
-        // 检查数据同步状态
-        checkFrontendData();
-        updateSyncStatusDisplay();
-      } else {
-        // 未登录，显示登录表单
-        addDebugInfo("等待用户登录");
-      }
-      
-      // 登录表单提交事件
-      document.getElementById('loginForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        if (adminLogin(username, password)) {
-          document.getElementById('loginPanel').style.display = 'none';
-          document.getElementById('adminMenu').classList.add('active');
-          document.getElementById('syncPanel').style.display = 'block';
+        logoutBtn.addEventListener('click', function() {
+          // 清除登录状态
+          localStorage.removeItem('adminLoggedIn');
           
-          // 登录成功后检查数据
-          checkFrontendData();
-          updateSyncStatusDisplay();
+          // 显示登录面板
+          checkLoginStatus();
           
-          showAdminAlert("登录成功", "success");
-          addDebugInfo("登录成功");
-        } else {
-          showLoginError("用户名或密码错误");
-          addDebugInfo("登录失败: 用户名或密码错误");
-        }
-      });
-      
-      // 数据同步按钮事件
-      document.getElementById('syncDataButton').addEventListener('click', function() {
-        syncFrontendData();
-      });
-      
-      // 初始化语言切换按钮
-      const toggleLangButton = document.getElementById('toggleLang');
-      if (toggleLangButton) {
-        toggleLangButton.addEventListener('click', function() {
-          const currentLang = localStorage.getItem('locale') || 'zh';
-          const newLang = currentLang === 'zh' ? 'en' : 'zh';
-          localStorage.setItem('locale', newLang);
-          
-          // 更新按钮文本
-          toggleLangButton.textContent = newLang === 'zh' ? 'English' : '中文';
-          
-          addDebugInfo(`语言切换为: ${newLang}`);
+          // 显示消息
+          showAlert("您已成功退出登录", "info");
         });
+      } catch (error) {
+        console.error("初始化退出按钮失败:", error);
       }
-    });
+    }
+    
+    /**
+     * 加载统计数据
+     */
+    function loadStats() {
+      // 防止重复加载
+      if (isUpdating) {
+        console.warn("检测到重复数据加载请求，已忽略");
+        return;
+      }
+      
+      isUpdating = true;
+      
+      try {
+        const isLoggedIn = checkLoginStatus();
+        if (!isLoggedIn) return;
+        
+        // 获取游戏数据
+        const games = dataService.getAllGames();
+        const categories = dataService.getAllCategories();
+        
+        if (!games || !categories) {
+          console.error("无法获取数据");
+          return;
+        }
+        
+        // 更新统计数据
+        const totalGames = games.length;
+        const totalCategories = categories.length;
+        const activeGames = games.filter(game => game.active !== false).length;
+        
+        // 更新DOM
+        document.getElementById('totalGames').textContent = totalGames;
+        document.getElementById('totalCategories').textContent = totalCategories;
+        document.getElementById('activeGames').textContent = activeGames;
+        
+        console.log("统计数据已更新");
+        loadingStates.dataLoaded = true;
+      } catch (error) {
+        console.error("加载统计数据失败:", error);
+      } finally {
+        // 确保isUpdating标志被重置
+        setTimeout(() => {
+          isUpdating = false;
+        }, 100);
+      }
+    }
+    
+    /**
+     * 数据更新事件处理函数
+     */
+    function onDataUpdated() {
+      console.log("检测到数据更新，更新统计数据");
+      
+      // 防止重复更新
+      if (isUpdating) {
+        console.warn("检测到重复数据更新请求，已忽略");
+        return;
+      }
+      
+      // 重新加载统计数据
+      loadStats();
+    }
+    
+    /**
+     * 切换语言
+     */
+    function toggleLanguage() {
+      try {
+        // 切换语言
+        currentLang = currentLang === 'zh' ? 'en' : 'zh';
+        
+        // 保存语言设置
+        localStorage.setItem('locale', currentLang);
+        
+        // 更新语言按钮文本
+        const toggleLangBtn = document.getElementById('toggleLang');
+        if (toggleLangBtn) {
+          toggleLangBtn.textContent = currentLang === 'zh' ? 'English' : '中文';
+        }
+        
+        // 更新页面文本（如果需要）
+        updateUIText();
+      } catch (error) {
+        console.error("切换语言失败:", error);
+      }
+    }
+    
+    /**
+     * 更新UI文本
+     */
+    function updateUIText() {
+      // 如果需要根据语言更新页面文本，可以在这里实现
+    }
+    
+    /**
+     * 显示提示消息
+     * @param {string} message 消息内容
+     * @param {string} type 消息类型 (success, danger, warning, info)
+     */
+    function showAlert(message, type = 'info') {
+      try {
+        const alertContainer = document.getElementById('alertContainer');
+        if (!alertContainer) return;
+        
+        const alertEl = document.createElement('div');
+        alertEl.className = `alert alert-${type}`;
+        alertEl.innerHTML = `
+          ${message}
+          <span class="close-alert">&times;</span>
+        `;
+        
+        // 添加关闭按钮事件
+        const closeBtn = alertEl.querySelector('.close-alert');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function() {
+            alertEl.remove();
+          });
+        }
+        
+        // 添加到容器
+        alertContainer.appendChild(alertEl);
+        
+        // 5秒后自动关闭
+        setTimeout(() => {
+          if (alertEl.parentNode) {
+            alertEl.remove();
+          }
+        }, 5000);
+      } catch (error) {
+        console.error("显示提示消息失败:", error);
+      }
+    }
   </script>
 </body>
 </html> 
