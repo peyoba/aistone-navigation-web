@@ -1,0 +1,14 @@
+{
+  "build": {
+    "command": "npm run build",
+    "output_directory": "out"
+  },
+  "redirects": [
+    { "source": "/*", "destination": "/index.html", "status_code": 200 }
+  ],
+  "headers": {
+    "/*": {
+      "Cache-Control": "public, max-age=0, must-revalidate"
+    }
+  }
+} 
