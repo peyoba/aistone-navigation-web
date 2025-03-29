@@ -8,6 +8,13 @@ import GamePlayer from '../../components/games/GamePlayer';
 import { games } from '../../data/games';
 import { getTranslations, useTranslation } from '../../utils/i18n';
 
+// 为静态导出生成所有可能的游戏ID参数
+export function generateStaticParams() {
+  return games.map(game => ({
+    id: game.id,
+  }));
+}
+
 export default function GamePage() {
   const params = useParams();
   const router = useRouter();
