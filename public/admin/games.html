@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>游戏管理 - AI Stone 游戏导航</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <header class="main-header">
+    <h1 class="site-title">AI Stone 游戏导航 - 游戏管理</h1>
+    <nav class="main-nav">
+      <a href="/">首页</a>
+      <a href="/favorites.html">收藏夹</a>
+      <a href="/admin/index.html" class="active">管理</a>
+      <button id="toggleLang">English</button>
+    </nav>
+  </header>
+  
+  <div class="admin-container">
+    <!-- 登录检查提示 -->
+    <div id="loginAlert" class="alert alert-warning" style="display: none;">
+      您需要先登录才能访问此页面。<a href="/admin/index.html">前往登录</a>
+    </div>
+    
+    <!-- 游戏管理面板 -->
+    <div id="gamesPanel" class="admin-panel" style="display: none;">
+      <h2 class="admin-title">游戏管理</h2>
+      
+      <!-- 操作栏 -->
+      <div class="admin-actions">
+        <div class="search-box">
+          <input type="text" id="searchGames" class="form-control" placeholder="搜索游戏...">
+        </div>
+        <div class="filter-box">
+          <select id="categoryFilter" class="form-control">
+            <option value="">全部分类</option>
+            <!-- 分类选项将通过JS动态加载 -->
+          </select>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-primary" onclick="location.href='/admin/upload.html'">添加游戏</button>
+        </div>
+      </div>
+      
+      <!-- 提示信息区域 -->
+      <div id="alertContainer"></div>
+      
+      <!-- 游戏列表 -->
+      <div class="games-table-container">
+        <table class="admin-table" id="gamesTable">
+          <thead>
+            <tr>
+              <th style="width: 5%">ID</th>
+              <th style="width: 15%">缩略图</th>
+              <th style="width: 20%">标题</th>
+              <th style="width: 30%">描述</th>
+              <th style="width: 10%">分类</th>
+              <th style="width: 10%">状态</th>
+              <th style="width: 10%">操作</th>
+            </tr>
+          </thead>
+          <tbody id="gamesTableBody">
+            <!-- 游戏列表将通过JS动态加载 -->
+            <tr>
+              <td colspan="7" class="loading">
+                <div class="spinner"></div>
+                <p>加载游戏数据中...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- 游戏编辑对话框 -->
+    <div id="editGameModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>编辑游戏</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="editGameForm" class="admin-form">
+            <input type="hidden" id="editGameId">
+            
+            <div class="form-group">
+              <label for="editGameTitleZh">游戏标题（中文）</label>
+              <input type="text" id="editGameTitleZh" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameTitleEn">游戏标题（英文）</label>
+              <input type="text" id="editGameTitleEn" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameDescZh">游戏描述（中文）</label>
+              <textarea id="editGameDescZh" class="form-control" required></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameDescEn">游戏描述（英文）</label>
+              <textarea id="editGameDescEn" class="form-control" required></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameCategory">游戏分类</label>
+              <select id="editGameCategory" class="form-control" required>
+                <!-- 分类选项将通过JS动态加载 -->
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameUrl">游戏链接 (iframe URL)</label>
+              <input type="url" id="editGameUrl" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="editGameStatus">游戏状态</label>
+              <select id="editGameStatus" class="form-control">
+                <option value="true">启用</option>
+                <option value="false">禁用</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <button type="submit" class="btn btn-primary">保存更改</button>
+              <button type="button" class="btn btn-secondary close-modal">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 删除确认对话框 -->
+    <div id="deleteConfirmModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>确认删除</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>您确定要删除游戏 "<span id="deleteGameName"></span>" 吗？此操作不可撤销。</p>
+          <div class="form-group">
+            <button id="confirmDeleteBtn" class="btn btn-danger">确认删除</button>
+            <button class="btn btn-secondary close-modal">取消</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/js/app.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    // 页面加载完成后执行
+    document.addEventListener('DOMContentLoaded', function() {
+      // 检查登录状态
+      const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+      
+      if (!isLoggedIn) {
+        // 未登录，显示警告
+        document.getElementById('loginAlert').style.display = 'block';
+      } else {
+        // 已登录，显示游戏管理面板
+        document.getElementById('gamesPanel').style.display = 'block';
+        
+        // 加载游戏数据
+        loadGamesList();
+        
+        // 初始化搜索和筛选功能
+        initSearchAndFilter();
+        
+        // 初始化编辑对话框
+        initEditModal();
+        
+        // 初始化删除对话框
+        initDeleteModal();
+      }
+      
+      // 初始化语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', toggleLanguage);
+      }
+    });
+    
+    /**
+     * 加载游戏列表
+     */
+    function loadGamesList() {
+      try {
+        // 检查是否有全局游戏数据
+        if (!window.gamesData || !Array.isArray(window.gamesData) || window.gamesData.length === 0) {
+          // 如果全局数据不存在或为空，尝试获取应用中的游戏数据
+          const builtInGames = [];
+          if (window.appData && window.appData.games) {
+            builtInGames.push(...window.appData.games);
+          }
+          
+          // 加载自定义游戏数据
+          const customGamesStr = localStorage.getItem('customGames');
+          const customGames = customGamesStr ? JSON.parse(customGamesStr) : [];
+          
+          // 合并所有游戏数据
+          window.gamesData = [...builtInGames, ...customGames];
+        }
+        
+        // 渲染游戏表格
+        renderGamesTable(window.gamesData);
+        
+        // 填充分类筛选器
+        populateCategoryFilter();
+      } catch (error) {
+        console.error('加载游戏列表失败:', error);
+        showAlert('加载游戏数据失败，请刷新页面重试。', 'danger');
+      }
+    }
+    
+    /**
+     * 渲染游戏表格
+     * @param {Array} games - 游戏数据数组
+     */
+    function renderGamesTable(games) {
+      const tableBody = document.getElementById('gamesTableBody');
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 清空表格内容
+      tableBody.innerHTML = '';
+      
+      if (!games || games.length === 0) {
+        // 如果没有游戏，显示空消息
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+          <td colspan="7" style="text-align: center; padding: 30px;">
+            暂无游戏数据。<a href="/admin/upload.html">点击这里</a>添加游戏。
+          </td>
+        `;
+        tableBody.appendChild(emptyRow);
+        return;
+      }
+      
+      // 按时间倒序排列游戏
+      const sortedGames = [...games].sort((a, b) => {
+        return new Date(b.dateAdded || 0) - new Date(a.dateAdded || 0);
+      });
+      
+      // 为每个游戏创建表格行
+      sortedGames.forEach((game, index) => {
+        const row = document.createElement('tr');
+        row.dataset.gameId = game.id;
+        
+        // 判断是否为自定义游戏（可编辑）
+        const isCustomGame = !!(localStorage.getItem('customGames') && 
+          JSON.parse(localStorage.getItem('customGames')).find(g => g.id === game.id));
+        
+        // 获取分类名称
+        let categoryName = '未分类';
+        const category = window.categoriesData?.find(c => c.id === game.category);
+        if (category && category.name) {
+          categoryName = category.name[currentLang] || category.name.en || category.id;
+        }
+        
+        // 设置行内容
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>
+            <img src="${game.thumbnail || '/images/placeholder.jpg'}" alt="${game.title[currentLang]}" 
+                 style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+          </td>
+          <td>${game.title[currentLang] || game.title.en}</td>
+          <td>${game.description[currentLang] || game.description.en}</td>
+          <td>${categoryName}</td>
+          <td>
+            <span class="status-badge ${game.active ? 'status-active' : 'status-inactive'}">
+              ${game.active ? '启用' : '禁用'}
+            </span>
+          </td>
+          <td class="table-actions">
+            <button class="btn btn-secondary btn-sm view-game" data-id="${game.id}" title="查看游戏">👁️</button>
+            ${isCustomGame ? `
+              <button class="btn btn-primary btn-sm edit-game" data-id="${game.id}" title="编辑游戏">✏️</button>
+              <button class="btn btn-danger btn-sm delete-game" data-id="${game.id}" title="删除游戏">🗑️</button>
+            ` : `
+              <button class="btn btn-secondary btn-sm" disabled title="内置游戏无法修改">🔒</button>
+            `}
+          </td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+      
+      // 为按钮添加事件监听器
+      addTableButtonListeners();
+    }
+    
+    /**
+     * 为表格中的按钮添加事件监听器
+     */
+    function addTableButtonListeners() {
+      // 查看游戏按钮
+      document.querySelectorAll('.view-game').forEach(button => {
+        button.addEventListener('click', function() {
+          const gameId = this.dataset.id;
+          window.open(`/game/index.html?id=${gameId}`, '_blank');
+        });
+      });
+      
+      // 编辑游戏按钮
+      document.querySelectorAll('.edit-game').forEach(button => {
+        button.addEventListener('click', function() {
+          const gameId = this.dataset.id;
+          openEditModal(gameId);
+        });
+      });
+      
+      // 删除游戏按钮
+      document.querySelectorAll('.delete-game').forEach(button => {
+        button.addEventListener('click', function() {
+          const gameId = this.dataset.id;
+          openDeleteModal(gameId);
+        });
+      });
+    }
+    
+    /**
+     * 填充分类筛选器
+     */
+    function populateCategoryFilter() {
+      const categoryFilter = document.getElementById('categoryFilter');
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 尝试获取分类数据
+      let categories = [];
+      if (window.categoriesData && Array.isArray(window.categoriesData)) {
+        categories = window.categoriesData;
+      } else if (window.appData && window.appData.categories) {
+        categories = window.appData.categories;
+      }
+      
+      // 如果有分类数据，填充下拉框
+      if (categories.length > 0) {
+        // 保留第一个"全部分类"选项
+        categoryFilter.innerHTML = `<option value="">全部分类</option>`;
+        
+        // 添加每个分类作为选项
+        categories.forEach(category => {
+          const option = document.createElement('option');
+          option.value = category.id;
+          option.textContent = category.name[currentLang] || category.name.en || category.id;
+          categoryFilter.appendChild(option);
+        });
+        
+        // 同样填充编辑表单的分类选择器
+        const editCategorySelect = document.getElementById('editGameCategory');
+        if (editCategorySelect) {
+          editCategorySelect.innerHTML = '';
+          categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name[currentLang] || category.name.en || category.id;
+            editCategorySelect.appendChild(option);
+          });
+        }
+      }
+    }
+    
+    /**
+     * 初始化搜索和筛选功能
+     */
+    function initSearchAndFilter() {
+      // 搜索功能
+      const searchInput = document.getElementById('searchGames');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          applyFilters();
+        });
+      }
+      
+      // 分类筛选
+      const categoryFilter = document.getElementById('categoryFilter');
+      if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+          applyFilters();
+        });
+      }
+    }
+    
+    /**
+     * 应用搜索和筛选条件
+     */
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchGames').value.toLowerCase();
+      const categoryValue = document.getElementById('categoryFilter').value;
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 复制原始游戏数据进行筛选
+      let filteredGames = [...window.gamesData];
+      
+      // 应用搜索条件
+      if (searchTerm) {
+        filteredGames = filteredGames.filter(game => {
+          // 在标题和描述中搜索
+          const titleMatch = game.title[currentLang]?.toLowerCase().includes(searchTerm) || 
+                           game.title.en?.toLowerCase().includes(searchTerm);
+          
+          const descMatch = game.description[currentLang]?.toLowerCase().includes(searchTerm) || 
+                          game.description.en?.toLowerCase().includes(searchTerm);
+                          
+          return titleMatch || descMatch;
+        });
+      }
+      
+      // 应用分类筛选
+      if (categoryValue) {
+        filteredGames = filteredGames.filter(game => game.category === categoryValue);
+      }
+      
+      // 重新渲染表格
+      renderGamesTable(filteredGames);
+    }
+    
+    /**
+     * 初始化编辑对话框
+     */
+    function initEditModal() {
+      // 获取对话框元素
+      const modal = document.getElementById('editGameModal');
+      
+      // 关闭按钮事件
+      const closeButtons = modal.querySelectorAll('.close-modal');
+      closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          modal.style.display = 'none';
+        });
+      });
+      
+      // 点击对话框外部关闭
+      window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+      
+      // 表单提交事件
+      const form = document.getElementById('editGameForm');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        saveGameChanges();
+      });
+    }
+    
+    /**
+     * 打开编辑游戏对话框
+     * @param {string} gameId - 游戏ID
+     */
+    function openEditModal(gameId) {
+      // 获取要编辑的游戏数据
+      const game = window.gamesData.find(g => g.id === gameId);
+      if (!game) {
+        showAlert('未找到游戏数据', 'danger');
+        return;
+      }
+      
+      // 填充表单字段
+      document.getElementById('editGameId').value = game.id;
+      document.getElementById('editGameTitleZh').value = game.title.zh || '';
+      document.getElementById('editGameTitleEn').value = game.title.en || '';
+      document.getElementById('editGameDescZh').value = game.description.zh || '';
+      document.getElementById('editGameDescEn').value = game.description.en || '';
+      document.getElementById('editGameCategory').value = game.category || '';
+      document.getElementById('editGameUrl').value = game.iframeUrl || '';
+      document.getElementById('editGameStatus').value = game.active.toString();
+      
+      // 显示对话框
+      document.getElementById('editGameModal').style.display = 'block';
+    }
+    
+    /**
+     * 保存游戏编辑更改
+     */
+    function saveGameChanges() {
+      // 获取表单数据
+      const gameId = document.getElementById('editGameId').value;
+      
+      // 准备更新后的游戏数据
+      const updatedGame = {
+        id: gameId,
+        title: {
+          zh: document.getElementById('editGameTitleZh').value,
+          en: document.getElementById('editGameTitleEn').value
+        },
+        description: {
+          zh: document.getElementById('editGameDescZh').value,
+          en: document.getElementById('editGameDescEn').value
+        },
+        category: document.getElementById('editGameCategory').value,
+        iframeUrl: document.getElementById('editGameUrl').value,
+        active: document.getElementById('editGameStatus').value === 'true',
+        dateModified: new Date().toISOString()
+      };
+      
+      try {
+        // 获取自定义游戏列表
+        const customGames = JSON.parse(localStorage.getItem('customGames') || '[]');
+        
+        // 查找要更新的游戏索引
+        const gameIndex = customGames.findIndex(g => g.id === gameId);
+        
+        if (gameIndex === -1) {
+          showAlert('未找到要更新的游戏', 'danger');
+          return;
+        }
+        
+        // 保留原始游戏对象中的其他字段
+        const originalGame = customGames[gameIndex];
+        
+        // 合并更新
+        customGames[gameIndex] = {
+          ...originalGame,
+          ...updatedGame,
+          dateAdded: originalGame.dateAdded, // 保留原添加日期
+          thumbnail: originalGame.thumbnail // 保留原缩略图
+        };
+        
+        // 保存回本地存储
+        localStorage.setItem('customGames', JSON.stringify(customGames));
+        
+        // 更新全局游戏数据
+        const globalGameIndex = window.gamesData.findIndex(g => g.id === gameId);
+        if (globalGameIndex !== -1) {
+          window.gamesData[globalGameIndex] = customGames[gameIndex];
+        }
+        
+        // 关闭对话框
+        document.getElementById('editGameModal').style.display = 'none';
+        
+        // 刷新表格
+        renderGamesTable(window.gamesData);
+        
+        // 显示成功消息
+        showAlert('游戏信息已成功更新！', 'success');
+      } catch (error) {
+        console.error('保存游戏更改失败:', error);
+        showAlert('保存游戏更改失败。', 'danger');
+      }
+    }
+    
+    /**
+     * 初始化删除确认对话框
+     */
+    function initDeleteModal() {
+      // 获取对话框元素
+      const modal = document.getElementById('deleteConfirmModal');
+      
+      // 关闭按钮事件
+      const closeButtons = modal.querySelectorAll('.close-modal');
+      closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          modal.style.display = 'none';
+        });
+      });
+      
+      // 点击对话框外部关闭
+      window.addEventListener('click', function(event) {
+        if (event.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+      
+      // 确认删除按钮事件
+      const confirmButton = document.getElementById('confirmDeleteBtn');
+      confirmButton.addEventListener('click', function() {
+        deleteGame(this.dataset.gameId);
+      });
+    }
+    
+    /**
+     * 打开删除确认对话框
+     * @param {string} gameId - 游戏ID
+     */
+    function openDeleteModal(gameId) {
+      // 获取要删除的游戏数据
+      const game = window.gamesData.find(g => g.id === gameId);
+      if (!game) {
+        showAlert('未找到游戏数据', 'danger');
+        return;
+      }
+      
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 设置游戏名称
+      document.getElementById('deleteGameName').textContent = game.title[currentLang] || game.title.en;
+      
+      // 设置确认按钮的游戏ID
+      document.getElementById('confirmDeleteBtn').dataset.gameId = gameId;
+      
+      // 显示对话框
+      document.getElementById('deleteConfirmModal').style.display = 'block';
+    }
+    
+    /**
+     * 删除游戏
+     * @param {string} gameId - 游戏ID
+     */
+    function deleteGame(gameId) {
+      try {
+        // 获取自定义游戏列表
+        const customGames = JSON.parse(localStorage.getItem('customGames') || '[]');
+        
+        // 查找要删除的游戏索引
+        const gameIndex = customGames.findIndex(g => g.id === gameId);
+        
+        if (gameIndex === -1) {
+          showAlert('未找到要删除的游戏', 'danger');
+          return;
+        }
+        
+        // 删除游戏
+        customGames.splice(gameIndex, 1);
+        
+        // 保存回本地存储
+        localStorage.setItem('customGames', JSON.stringify(customGames));
+        
+        // 更新全局游戏数据
+        window.gamesData = window.gamesData.filter(g => g.id !== gameId);
+        
+        // 关闭对话框
+        document.getElementById('deleteConfirmModal').style.display = 'none';
+        
+        // 刷新表格
+        renderGamesTable(window.gamesData);
+        
+        // 显示成功消息
+        showAlert('游戏已成功删除！', 'success');
+      } catch (error) {
+        console.error('删除游戏失败:', error);
+        showAlert('删除游戏失败。', 'danger');
+      }
+    }
+    
+    /**
+     * 显示提醒消息
+     * @param {string} message - 消息文本
+     * @param {string} type - 消息类型 (success, danger, warning, info)
+     */
+    function showAlert(message, type) {
+      const alertContainer = document.getElementById('alertContainer');
+      
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      
+      // 添加关闭按钮
+      const closeBtn = document.createElement('span');
+      closeBtn.style.float = 'right';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', function() {
+        alert.remove();
+      });
+      
+      alert.appendChild(closeBtn);
+      alertContainer.prepend(alert);
+      
+      // 5秒后自动关闭
+      setTimeout(function() {
+        if (alert.parentNode) {
+          alert.remove();
+        }
+      }, 5000);
+    }
+    
+    /**
+     * 切换界面语言
+     */
+    function toggleLanguage() {
+      // 获取当前语言
+      let currentLang = localStorage.getItem('locale') || 'zh';
+      
+      // 切换语言
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem('locale', currentLang);
+      
+      // 更新按钮文本
+      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
+      
+      // 刷新页面显示
+      populateCategoryFilter();
+      renderGamesTable(window.gamesData);
+      updateUIText();
+    }
+    
+    /**
+     * 更新界面文本
+     */
+    function updateUIText() {
+      const currentLang = localStorage.getItem('locale') || 'zh';
+      
+      const translations = {
+        zh: {
+          'games.title': 'AI Stone 游戏导航 - 游戏管理',
+          'games.heading': '游戏管理',
+          'games.search': '搜索游戏...',
+          'games.all.categories': '全部分类',
+          'games.add': '添加游戏',
+          'games.loading': '加载游戏数据中...',
+          'games.empty': '暂无游戏数据。',
+          'games.click.here': '点击这里',
+          'games.add.game': '添加游戏。',
+          'games.status.active': '启用',
+          'games.status.inactive': '禁用',
+          'games.action.view': '查看游戏',
+          'games.action.edit': '编辑游戏',
+          'games.action.delete': '删除游戏',
+          'games.builtin': '内置游戏无法修改',
+          'games.edit.title': '编辑游戏',
+          'games.save': '保存更改',
+          'games.cancel': '取消',
+          'games.delete.confirm': '确认删除',
+          'games.delete.message': '您确定要删除游戏 "',
+          'games.delete.message2': '" 吗？此操作不可撤销。',
+          'games.confirm.delete': '确认删除',
+          'nav.home': '首页',
+          'nav.favorites': '收藏夹',
+          'nav.admin': '管理'
+        },
+        en: {
+          'games.title': 'AI Stone Game Navigation - Game Management',
+          'games.heading': 'Game Management',
+          'games.search': 'Search games...',
+          'games.all.categories': 'All Categories',
+          'games.add': 'Add Game',
+          'games.loading': 'Loading game data...',
+          'games.empty': 'No games available.',
+          'games.click.here': 'Click here',
+          'games.add.game': ' to add a game.',
+          'games.status.active': 'Active',
+          'games.status.inactive': 'Inactive',
+          'games.action.view': 'View Game',
+          'games.action.edit': 'Edit Game',
+          'games.action.delete': 'Delete Game',
+          'games.builtin': 'Built-in game cannot be modified',
+          'games.edit.title': 'Edit Game',
+          'games.save': 'Save Changes',
+          'games.cancel': 'Cancel',
+          'games.delete.confirm': 'Confirm Deletion',
+          'games.delete.message': 'Are you sure you want to delete the game "',
+          'games.delete.message2': '"? This action cannot be undone.',
+          'games.confirm.delete': 'Confirm Delete',
+          'nav.home': 'Home',
+          'nav.favorites': 'Favorites',
+          'nav.admin': 'Admin'
+        }
+      };
+      
+      // 设置页面标题
+      document.title = translations[currentLang]['games.title'];
+      document.querySelector('.site-title').textContent = translations[currentLang]['games.title'];
+      
+      // 更新导航链接
+      const navLinks = document.querySelectorAll('.main-nav a');
+      navLinks[0].textContent = translations[currentLang]['nav.home'];
+      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
+      navLinks[2].textContent = translations[currentLang]['nav.admin'];
+      
+      // 更新页面标题
+      document.querySelector('.admin-title').textContent = translations[currentLang]['games.heading'];
+      
+      // 更新搜索框占位符
+      document.getElementById('searchGames').placeholder = translations[currentLang]['games.search'];
+      
+      // 更新分类筛选器第一个选项
+      document.querySelector('#categoryFilter option:first-child').textContent = 
+        translations[currentLang]['games.all.categories'];
+      
+      // 更新添加游戏按钮
+      document.querySelector('.action-buttons .btn-primary').textContent = 
+        translations[currentLang]['games.add'];
+        
+      // 更新游戏状态文本
+      document.querySelectorAll('.status-active').forEach(el => {
+        el.textContent = translations[currentLang]['games.status.active'];
+      });
+      
+      document.querySelectorAll('.status-inactive').forEach(el => {
+        el.textContent = translations[currentLang]['games.status.inactive'];
+      });
+      
+      // 更新对话框文本
+      if (document.querySelector('#editGameModal .modal-header h3')) {
+        document.querySelector('#editGameModal .modal-header h3').textContent = 
+          translations[currentLang]['games.edit.title'];
+      }
+      
+      if (document.querySelector('#editGameForm .btn-primary')) {
+        document.querySelector('#editGameForm .btn-primary').textContent = 
+          translations[currentLang]['games.save'];
+      }
+      
+      if (document.querySelector('#editGameForm .btn-secondary')) {
+        document.querySelector('#editGameForm .btn-secondary').textContent = 
+          translations[currentLang]['games.cancel'];
+      }
+      
+      // 更新删除确认对话框
+      if (document.querySelector('#deleteConfirmModal .modal-header h3')) {
+        document.querySelector('#deleteConfirmModal .modal-header h3').textContent = 
+          translations[currentLang]['games.delete.confirm'];
+      }
+      
+      const deleteMessageParts = document.querySelector('#deleteConfirmModal .modal-body p');
+      if (deleteMessageParts) {
+        deleteMessageParts.innerHTML = 
+          translations[currentLang]['games.delete.message'] + 
+          `<span id="deleteGameName"></span>` + 
+          translations[currentLang]['games.delete.message2'];
+      }
+      
+      if (document.querySelector('#confirmDeleteBtn')) {
+        document.querySelector('#confirmDeleteBtn').textContent = 
+          translations[currentLang]['games.confirm.delete'];
+      }
+      
+      if (document.querySelector('#deleteConfirmModal .btn-secondary')) {
+        document.querySelector('#deleteConfirmModal .btn-secondary').textContent = 
+          translations[currentLang]['games.cancel'];
+      }
+    }
+  </script>
+</body>
+</html> 

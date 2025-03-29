@@ -319,4 +319,130 @@ textarea.form-control {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* 游戏管理页面特定样式 */
+.admin-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.search-box {
+  flex: 2;
+  min-width: 200px;
+}
+
+.filter-box {
+  flex: 1;
+  min-width: 150px;
+}
+
+.action-buttons {
+  min-width: 120px;
+  text-align: right;
+}
+
+.games-table-container {
+  overflow-x: auto;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.status-active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.status-inactive {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+/* 模态对话框样式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2563eb;
+}
+
+.close-modal {
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-modal:hover {
+  color: #1f2937;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+/* 响应式调整 */
+@media (max-width: 600px) {
+  .admin-actions {
+    flex-direction: column;
+  }
+  
+  .search-box, .filter-box, .action-buttons {
+    width: 100%;
+  }
+  
+  .action-buttons {
+    text-align: center;
+    margin-top: 10px;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 0 10px;
+  }
 } 
