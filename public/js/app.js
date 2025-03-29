@@ -10,13 +10,130 @@ let currentLang = 'zh'; // 默认中文
 let currentCategory = 'all'; // 默认所有分类
 let favorites = []; // 收藏的游戏
 
+// 后备数据，当远程数据加载失败时使用
+const fallbackGames = [
+  {
+    id: '2048',
+    title: {
+      en: '2048',
+      zh: '2048数字方块'
+    },
+    description: {
+      en: 'Join the numbers and get to the 2048 tile!',
+      zh: '合并相同数字，获得2048方块！'
+    },
+    iframeUrl: 'https://play2048.co',
+    thumbnail: '/images/placeholder.jpg',
+    category: 'puzzle',
+    active: true,
+    dateAdded: '2023-06-01T12:00:00Z'
+  },
+  {
+    id: 'tetris',
+    title: {
+      en: 'Tetris',
+      zh: '俄罗斯方块'
+    },
+    description: {
+      en: 'Arrange falling blocks to create and destroy horizontal lines.',
+      zh: '排列下落的方块，创建并消除水平线。'
+    },
+    iframeUrl: 'https://tetris.com/play-tetris',
+    thumbnail: '/images/placeholder.jpg',
+    category: 'puzzle',
+    active: true,
+    dateAdded: '2023-06-03T12:00:00Z'
+  },
+  {
+    id: 'snake',
+    title: {
+      en: 'Snake',
+      zh: '贪吃蛇'
+    },
+    description: {
+      en: 'Control a snake to eat food and avoid hitting walls or itself.',
+      zh: '控制蛇吃食物，避免撞到墙壁或自身。'
+    },
+    iframeUrl: 'https://playsnake.org',
+    thumbnail: '/images/placeholder.jpg',
+    category: 'action',
+    active: true,
+    dateAdded: '2023-06-04T12:00:00Z'
+  }
+];
+
+const fallbackCategories = [
+  {
+    id: 'all',
+    name: {
+      en: 'All Games',
+      zh: '所有游戏'
+    },
+    order: 0,
+    active: true
+  },
+  {
+    id: 'puzzle',
+    name: {
+      en: 'Puzzle',
+      zh: '益智游戏'
+    },
+    order: 1,
+    active: true
+  },
+  {
+    id: 'action',
+    name: {
+      en: 'Action',
+      zh: '动作游戏'
+    },
+    order: 2,
+    active: true
+  }
+];
+
 // DOM加载完成后执行
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('页面加载完成，开始初始化...');
+  
   // 初始化语言
   currentLang = getStoredLanguage();
+  console.log('当前语言:', currentLang);
   
-  // 加载数据
-  await loadData();
+  try {
+    // 加载数据
+    await loadData();
+    
+    // 设置语言
+    setLanguage(currentLang);
+    
+    // 初始化分类
+    initCategories();
+    
+    // 初始化收藏功能
+    initFavorites();
+    
+    // 初始化搜索功能
+    initSearch();
+  } catch (error) {
+    console.error('初始化过程中出现错误:', error);
+    document.getElementById('loading').innerHTML = `
+      <p>初始化出错: ${error.message}，使用备用数据</p>
+      <button onclick="location.reload()" class="game-link">重试</button>
+    `;
+    
+    // 使用后备数据
+    useFallbackData();
+  }
+});
+
+/**
+ * 使用后备数据
+ */
+function useFallbackData() {
+  console.log('使用后备数据...');
+  games = fallbackGames;
+  categories = fallbackCategories;
   
   // 设置语言
   setLanguage(currentLang);
@@ -29,7 +146,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   // 初始化搜索功能
   initSearch();
-});
+  
+  // 渲染游戏卡片
+  renderGames();
+  
+  // 隐藏加载状态
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('gameGrid').style.display = 'grid';
+}
 
 /**
  * 从localStorage获取存储的语言设置
@@ -44,25 +168,43 @@ function getStoredLanguage() {
  */
 async function loadData() {
   try {
+    console.log('开始加载数据...');
+    
     // 显示加载状态
     document.getElementById('loading').style.display = 'block';
     document.getElementById('gameGrid').style.display = 'none';
     
-    // 并行加载数据
-    const [gamesResponse, categoriesResponse] = await Promise.all([
-      fetch('/data/games.json'),
-      fetch('/data/categories.json')
-    ]);
+    // 加载游戏数据
+    console.log('尝试加载games.json...');
+    const gamesResponse = await fetch('/data/games.json');
     
-    if (!gamesResponse.ok || !categoriesResponse.ok) {
-      throw new Error('数据加载失败');
+    if (!gamesResponse.ok) {
+      console.error('games.json加载失败:', gamesResponse.status, gamesResponse.statusText);
+      throw new Error(`游戏数据加载失败 (${gamesResponse.status})`);
     }
     
+    console.log('尝试解析games.json...');
     const gamesData = await gamesResponse.json();
-    const categoriesData = await categoriesResponse.json();
+    console.log('游戏数据加载成功:', gamesData);
     
+    // 加载分类数据
+    console.log('尝试加载categories.json...');
+    const categoriesResponse = await fetch('/data/categories.json');
+    
+    if (!categoriesResponse.ok) {
+      console.error('categories.json加载失败:', categoriesResponse.status, categoriesResponse.statusText);
+      throw new Error(`分类数据加载失败 (${categoriesResponse.status})`);
+    }
+    
+    console.log('尝试解析categories.json...');
+    const categoriesData = await categoriesResponse.json();
+    console.log('分类数据加载成功:', categoriesData);
+    
+    // 设置数据
     games = gamesData.games;
     categories = categoriesData.categories;
+    
+    console.log(`成功加载 ${games.length} 个游戏和 ${categories.length} 个分类`);
     
     // 渲染游戏卡片
     renderGames();
@@ -70,12 +212,15 @@ async function loadData() {
     // 隐藏加载状态
     document.getElementById('loading').style.display = 'none';
     document.getElementById('gameGrid').style.display = 'grid';
+    
   } catch (error) {
     console.error('数据加载错误:', error);
     document.getElementById('loading').innerHTML = `
       <p>加载数据时出错: ${error.message}</p>
-      <button onclick="location.reload()">重试</button>
+      <button onclick="useFallbackData()" class="game-link">使用备用数据</button>
+      <button onclick="location.reload()" class="game-link">重试</button>
     `;
+    throw error; // 重新抛出错误以便上层捕获
   }
 }
 

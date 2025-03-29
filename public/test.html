@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>测试页面 - AI Stone导航</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f8fa;
+      color: #333;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+    }
+    .btn {
+      display: inline-block;
+      background-color: #2563eb;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 4px;
+      text-decoration: none;
+      margin: 5px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    .test-result {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f4f8;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>AI Stone导航 - 测试页面</h1>
+    <p>此页面用于测试网站的基本功能是否正常工作。</p>
+    
+    <div class="test-section">
+      <h2>测试1: 本地存储</h2>
+      <button id="testLocalStorage" class="btn">测试本地存储</button>
+      <div id="localStorageResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>测试2: 加载JSON文件</h2>
+      <button id="testLoadGames" class="btn">加载游戏数据</button>
+      <div id="loadGamesResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+      <h2>测试3: DOM操作</h2>
+      <button id="testDOM" class="btn">测试DOM操作</button>
+      <div id="domResult" class="test-result">
+        <div id="domTestArea"></div>
+      </div>
+    </div>
+    
+    <div class="test-section">
+      <h2>导航</h2>
+      <a href="/" class="btn">返回首页</a>
+      <a href="/favorites.html" class="btn">收藏页面</a>
+      <a href="/game/?id=2048" class="btn">2048游戏</a>
+    </div>
+  </div>
+  
+  <script>
+    // 测试1: 本地存储
+    document.getElementById('testLocalStorage').addEventListener('click', function() {
+      const result = document.getElementById('localStorageResult');
+      try {
+        localStorage.setItem('test', 'Hello World');
+        const value = localStorage.getItem('test');
+        localStorage.removeItem('test');
+        
+        if (value === 'Hello World') {
+          result.innerHTML = '✅ 本地存储工作正常';
+          result.style.color = 'green';
+        } else {
+          result.innerHTML = '❌ 本地存储读取失败';
+          result.style.color = 'red';
+        }
+      } catch (error) {
+        result.innerHTML = `❌ 本地存储错误: ${error.message}`;
+        result.style.color = 'red';
+      }
+    });
+    
+    // 测试2: 加载JSON文件
+    document.getElementById('testLoadGames').addEventListener('click', async function() {
+      const result = document.getElementById('loadGamesResult');
+      result.innerHTML = '加载中...';
+      
+      try {
+        const gamesResponse = await fetch('/data/games.json');
+        if (!gamesResponse.ok) {
+          throw new Error(`游戏数据加载失败 (${gamesResponse.status})`);
+        }
+        
+        const gamesData = await gamesResponse.json();
+        result.innerHTML = `✅ 成功加载 ${gamesData.games.length} 个游戏数据`;
+        result.style.color = 'green';
+      } catch (error) {
+        result.innerHTML = `❌ 加载错误: ${error.message}`;
+        result.style.color = 'red';
+      }
+    });
+    
+    // 测试3: DOM操作
+    document.getElementById('testDOM').addEventListener('click', function() {
+      const testArea = document.getElementById('domTestArea');
+      testArea.innerHTML = '';
+      
+      try {
+        // 创建一个简单的游戏卡片
+        const card = document.createElement('div');
+        card.style.border = '1px solid #ddd';
+        card.style.padding = '15px';
+        card.style.borderRadius = '4px';
+        card.style.marginTop = '10px';
+        
+        const title = document.createElement('h3');
+        title.textContent = '测试游戏';
+        
+        const desc = document.createElement('p');
+        desc.textContent = '这是一个用于测试DOM操作的示例游戏卡片';
+        
+        const btn = document.createElement('button');
+        btn.textContent = '开始游戏';
+        btn.className = 'btn';
+        
+        card.appendChild(title);
+        card.appendChild(desc);
+        card.appendChild(btn);
+        testArea.appendChild(card);
+        
+        document.getElementById('domResult').innerHTML = '✅ DOM操作正常';
+        document.getElementById('domResult').style.color = 'green';
+        testArea.appendChild(card);
+      } catch (error) {
+        document.getElementById('domResult').innerHTML = `❌ DOM操作错误: ${error.message}`;
+        document.getElementById('domResult').style.color = 'red';
+      }
+    });
+  </script>
+</body>
+</html> 
