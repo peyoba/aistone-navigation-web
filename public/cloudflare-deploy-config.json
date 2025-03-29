@@ -1,14 +1,15 @@
 {
   "build": {
     "command": "npm run build",
-    "output_directory": "out"
+    "output_directory": "out",
+    "root_directory": "."
   },
-  "redirects": [
-    { "source": "/*", "destination": "/index.html", "status_code": 200 }
+  "routes": [
+    { "pattern": "/game/*", "script": null, "serve": "/game/index.html" },
+    { "pattern": "/admin/*", "script": null, "serve": "/admin/index.html" },
+    { "pattern": "/404.html", "script": null, "serve": "/404.html" }
   ],
-  "headers": {
-    "/*": {
-      "Cache-Control": "public, max-age=0, must-revalidate"
-    }
+  "environment_variables": {
+    "NODE_VERSION": "18.x"
   }
 } 

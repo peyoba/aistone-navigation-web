@@ -13,6 +13,9 @@ entry-point = "out"
 command = "npm run build"
 upload.format = "service-worker"
 
+# Cloudflare Pages 特定配置
+pages_build_output_dir = "out"
+
 [env.production]
 name = "aistone-navigation-web-prod"
 route = "aistone-navigation-web.pages.dev/*"
