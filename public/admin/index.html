@@ -6,6 +6,25 @@
   <title>AI Stone 游戏导航 - 管理后台</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/admin.css">
+  <script>
+    // 防止页面无限刷新
+    console.log("管理页面初始化...");
+    const originalWindowLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      get: function() {
+        console.log("管理页面-获取window.location");
+        return originalWindowLocation;
+      },
+      set: function(value) {
+        console.log("管理页面-尝试设置window.location:", value);
+        if (typeof value === 'string' && value.includes('reload')) {
+          console.log("管理页面-阻止页面刷新");
+          return;
+        }
+        originalWindowLocation.href = value;
+      }
+    });
+  </script>
   <style>
     /* 管理页面特定样式 */
     .admin-container {
@@ -111,6 +130,31 @@
       margin-bottom: 15px;
       color: #6b7280;
     }
+    
+    .debug-panel {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
+    
+    .debug-panel h3 {
+      margin-bottom: 10px;
+      color: #475569;
+      font-size: 16px;
+    }
+    
+    .debug-content {
+      background-color: #334155;
+      color: #e2e8f0;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -173,11 +217,32 @@
         <p>管理网站基本设置</p>
       </div>
     </div>
+    
+    <!-- 数据同步状态面板 -->
+    <div class="admin-panel" id="syncPanel" style="display: none;">
+      <h2>数据同步状态</h2>
+      <p id="syncStatus">正在检查数据同步状态...</p>
+      <button id="syncDataButton" class="btn-primary" style="width: auto; margin-top: 15px;">同步前端数据</button>
+    </div>
+    
+    <!-- 调试面板 -->
+    <div class="debug-panel" id="debugPanel">
+      <h3>调试信息</h3>
+      <div class="debug-content" id="debugContent">准备中...</div>
+    </div>
   </div>
   
   <script>
+    // 全局存储数据同步状态
+    let syncStatus = {
+      frontendData: null,
+      adminData: null,
+      lastSync: null
+    };
+    
     // 定义管理员登录函数，确保在全局范围内可用
     function adminLogin(username, password) {
+      console.log("尝试登录:", username);
       // 简单的验证逻辑，实际项目中应使用更安全的身份验证方式
       if (username === 'admin' && password === 'password') {
         localStorage.setItem('adminLoggedIn', 'true');
@@ -188,6 +253,7 @@
     
     // 显示提醒消息
     function showAdminAlert(message, type = 'info') {
+      console.log("显示提醒:", message, type);
       // 创建警告元素
       const alertEl = document.createElement('div');
       alertEl.style.position = 'fixed';
@@ -198,208 +264,202 @@
       alertEl.style.zIndex = '1000';
       alertEl.textContent = message;
       
-      // 设置不同类型的样式
+      // 根据类型设置样式
       if (type === 'success') {
-        alertEl.style.backgroundColor = '#ecfdf5';
-        alertEl.style.color = '#065f46';
-        alertEl.style.border = '1px solid #a7f3d0';
-      } else if (type === 'danger') {
+        alertEl.style.backgroundColor = '#dcfce7';
+        alertEl.style.color = '#166534';
+        alertEl.style.border = '1px solid #86efac';
+      } else if (type === 'error') {
         alertEl.style.backgroundColor = '#fee2e2';
         alertEl.style.color = '#b91c1c';
         alertEl.style.border = '1px solid #f87171';
-      } else if (type === 'warning') {
-        alertEl.style.backgroundColor = '#fffbeb';
-        alertEl.style.color = '#92400e';
-        alertEl.style.border = '1px solid #fcd34d';
       } else {
-        alertEl.style.backgroundColor = '#eff6ff';
-        alertEl.style.color = '#1e40af';
-        alertEl.style.border = '1px solid #bfdbfe';
+        alertEl.style.backgroundColor = '#e0f2fe';
+        alertEl.style.color = '#0c4a6e';
+        alertEl.style.border = '1px solid #7dd3fc';
       }
       
-      // 添加关闭按钮
-      const closeBtn = document.createElement('span');
-      closeBtn.style.marginLeft = '10px';
-      closeBtn.style.cursor = 'pointer';
-      closeBtn.innerHTML = '&times;';
-      closeBtn.onclick = function() {
-        document.body.removeChild(alertEl);
-      };
-      alertEl.appendChild(closeBtn);
-      
-      // 添加到页面
+      // 添加到文档
       document.body.appendChild(alertEl);
       
-      // 5秒后自动关闭
+      // 3秒后自动消失
       setTimeout(() => {
-        if (document.body.contains(alertEl)) {
+        alertEl.style.opacity = '0';
+        alertEl.style.transition = 'opacity 0.5s ease-out';
+        setTimeout(() => {
           document.body.removeChild(alertEl);
-        }
-      }, 5000);
+        }, 500);
+      }, 3000);
     }
-  </script>
-  
-  <script src="/js/app.js"></script>
-  <script src="/js/admin.js"></script>
-  <script>
-    // 管理员页面特定脚本
-    document.addEventListener('DOMContentLoaded', () => {
-      // 检查是否已登录
-      checkLoginStatus();
-      
-      // 登录表单提交
-      const loginForm = document.getElementById('loginForm');
-      if (loginForm) {
-        loginForm.addEventListener('submit', handleLogin);
-      }
-      
-      // 语言切换按钮
-      const toggleLangButton = document.getElementById('toggleLang');
-      if (toggleLangButton) {
-        toggleLangButton.addEventListener('click', toggleLanguage);
-      }
-    });
     
-    /**
-     * 检查登录状态
-     */
-    function checkLoginStatus() {
+    // 添加调试信息
+    function addDebugInfo(info) {
+      const debugContent = document.getElementById('debugContent');
+      const timestamp = new Date().toLocaleTimeString();
+      debugContent.textContent += `[${timestamp}] ${info}\n`;
+      debugContent.scrollTop = debugContent.scrollHeight;
+    }
+    
+    // 显示登录错误
+    function showLoginError(message) {
+      const errorEl = document.getElementById('loginError');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+    
+    // 检查前端数据
+    function checkFrontendData() {
+      addDebugInfo("检查前端数据...");
+      
+      // 尝试从window.appData获取数据
+      if (window.appData && window.appData.games && window.appData.categories) {
+        syncStatus.frontendData = {
+          games: window.appData.games,
+          categories: window.appData.categories
+        };
+        addDebugInfo(`找到前端数据: ${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类`);
+        return true;
+      }
+      
+      // 如果直接访问管理页面，尝试从localStorage获取
+      try {
+        const storedGames = localStorage.getItem('adminGames');
+        const storedCategories = localStorage.getItem('adminCategories');
+        
+        if (storedGames && storedCategories) {
+          syncStatus.adminData = {
+            games: JSON.parse(storedGames),
+            categories: JSON.parse(storedCategories)
+          };
+          addDebugInfo(`找到管理员存储的数据: ${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类`);
+          return true;
+        }
+      } catch (error) {
+        addDebugInfo(`解析存储数据失败: ${error.message}`);
+      }
+      
+      addDebugInfo("未找到数据");
+      return false;
+    }
+    
+    // 同步前端数据到管理后台
+    function syncFrontendData() {
+      addDebugInfo("开始同步前端数据...");
+      
+      if (syncStatus.frontendData) {
+        // 保存到localStorage
+        localStorage.setItem('adminGames', JSON.stringify(syncStatus.frontendData.games));
+        localStorage.setItem('adminCategories', JSON.stringify(syncStatus.frontendData.categories));
+        
+        syncStatus.adminData = {
+          games: syncStatus.frontendData.games,
+          categories: syncStatus.frontendData.categories
+        };
+        
+        syncStatus.lastSync = new Date().toISOString();
+        
+        addDebugInfo(`数据同步完成: ${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类`);
+        showAdminAlert("数据同步成功", "success");
+        
+        // 更新同步状态显示
+        updateSyncStatusDisplay();
+        
+        return true;
+      } else {
+        addDebugInfo("同步失败: 没有可用的前端数据");
+        showAdminAlert("同步失败: 没有可用的前端数据", "error");
+        return false;
+      }
+    }
+    
+    // 更新同步状态显示
+    function updateSyncStatusDisplay() {
+      const statusEl = document.getElementById('syncStatus');
+      
+      if (syncStatus.lastSync) {
+        const lastSyncDate = new Date(syncStatus.lastSync);
+        statusEl.innerHTML = `
+          <strong>上次同步:</strong> ${lastSyncDate.toLocaleString()}<br>
+          <strong>前端数据:</strong> ${syncStatus.frontendData ? `${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类` : '无数据'}<br>
+          <strong>管理员数据:</strong> ${syncStatus.adminData ? `${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类` : '无数据'}
+        `;
+      } else {
+        statusEl.innerHTML = `
+          <strong>前端数据:</strong> ${syncStatus.frontendData ? `${syncStatus.frontendData.games.length}个游戏, ${syncStatus.frontendData.categories.length}个分类` : '无数据'}<br>
+          <strong>管理员数据:</strong> ${syncStatus.adminData ? `${syncStatus.adminData.games.length}个游戏, ${syncStatus.adminData.categories.length}个分类` : '无数据'}<br>
+          <strong>状态:</strong> ${syncStatus.frontendData && syncStatus.adminData ? '可以同步' : '数据不完整'}
+        `;
+      }
+    }
+    
+    // 初始化页面
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log("DOM内容加载完成");
+      addDebugInfo("页面初始化...");
+      
+      // 检查登录状态
       const isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
       
       if (isLoggedIn) {
-        // 显示管理菜单
+        // 已登录，显示管理菜单
         document.getElementById('loginPanel').style.display = 'none';
         document.getElementById('adminMenu').classList.add('active');
-        console.log('管理员已登录');
-      } else {
-        // 显示登录面板
-        document.getElementById('loginPanel').style.display = 'block';
-        document.getElementById('adminMenu').classList.remove('active');
-        console.log('未登录，显示登录面板');
-      }
-    }
-    
-    /**
-     * 处理登录
-     */
-    function handleLogin(event) {
-      event.preventDefault();
-      
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      
-      console.log('尝试登录:', username);
-      
-      // 使用admin.js中的adminLogin函数验证
-      if (adminLogin(username, password)) {
-        // 登录成功
-        checkLoginStatus();
-        showAdminAlert('登录成功，欢迎回来！', 'success');
-      } else {
-        // 登录失败
-        const errorElem = document.getElementById('loginError');
-        errorElem.textContent = '用户名或密码错误';
-        errorElem.style.display = 'block';
-      }
-    }
-    
-    /**
-     * 切换语言
-     */
-    function toggleLanguage() {
-      // 获取当前语言
-      let currentLang = localStorage.getItem('locale') || 'zh';
-      
-      // 切换语言
-      currentLang = currentLang === 'zh' ? 'en' : 'zh';
-      localStorage.setItem('locale', currentLang);
-      
-      // 更新按钮文本
-      document.getElementById('toggleLang').textContent = currentLang === 'zh' ? 'English' : '中文';
-      
-      // 更新页面文本
-      updateUIText();
-    }
-    
-    /**
-     * 更新界面文本
-     */
-    function updateUIText() {
-      const currentLang = localStorage.getItem('locale') || 'zh';
-      
-      const translations = {
-        zh: {
-          'admin.title': 'AI Stone 游戏导航 - 管理后台',
-          'admin.login': '管理员登录',
-          'admin.username': '用户名',
-          'admin.password': '密码',
-          'admin.login.button': '登录',
-          'admin.login.error': '用户名或密码错误',
-          'admin.games': '游戏管理',
-          'admin.games.desc': '添加、编辑和删除游戏',
-          'admin.categories': '分类管理',
-          'admin.categories.desc': '管理游戏分类',
-          'admin.upload': '上传游戏',
-          'admin.upload.desc': '添加新游戏到平台',
-          'admin.settings': '网站设置',
-          'admin.settings.desc': '管理网站基本设置',
-          'nav.home': '首页',
-          'nav.favorites': '收藏夹',
-          'nav.admin': '管理'
-        },
-        en: {
-          'admin.title': 'AI Stone Game Navigation - Admin',
-          'admin.login': 'Administrator Login',
-          'admin.username': 'Username',
-          'admin.password': 'Password',
-          'admin.login.button': 'Login',
-          'admin.login.error': 'Invalid username or password',
-          'admin.games': 'Game Management',
-          'admin.games.desc': 'Add, edit and delete games',
-          'admin.categories': 'Category Management',
-          'admin.categories.desc': 'Manage game categories',
-          'admin.upload': 'Upload Game',
-          'admin.upload.desc': 'Add new games to the platform',
-          'admin.settings': 'Website Settings',
-          'admin.settings.desc': 'Manage website settings',
-          'nav.home': 'Home',
-          'nav.favorites': 'Favorites',
-          'nav.admin': 'Admin'
-        }
-      };
-      
-      // 设置页面标题
-      document.title = translations[currentLang]['admin.title'];
-      document.querySelector('.site-title').textContent = translations[currentLang]['admin.title'];
-      
-      // 更新导航链接
-      const navLinks = document.querySelectorAll('.main-nav a');
-      navLinks[0].textContent = translations[currentLang]['nav.home'];
-      navLinks[1].textContent = translations[currentLang]['nav.favorites'];
-      navLinks[2].textContent = translations[currentLang]['nav.admin'];
-      
-      // 更新登录表单
-      document.querySelector('#loginPanel h2').textContent = translations[currentLang]['admin.login'];
-      document.querySelector('label[for="username"]').textContent = translations[currentLang]['admin.username'];
-      document.querySelector('label[for="password"]').textContent = translations[currentLang]['admin.password'];
-      document.querySelector('#loginForm .btn-primary').textContent = translations[currentLang]['admin.login.button'];
-      
-      // 更新管理菜单
-      const cards = document.querySelectorAll('.admin-card h3');
-      const cardDescs = document.querySelectorAll('.admin-card p');
-      
-      if (cards.length >= 4) {
-        cards[0].textContent = translations[currentLang]['admin.games'];
-        cards[1].textContent = translations[currentLang]['admin.categories'];
-        cards[2].textContent = translations[currentLang]['admin.upload'];
-        cards[3].textContent = translations[currentLang]['admin.settings'];
+        document.getElementById('syncPanel').style.display = 'block';
         
-        cardDescs[0].textContent = translations[currentLang]['admin.games.desc'];
-        cardDescs[1].textContent = translations[currentLang]['admin.categories.desc'];
-        cardDescs[2].textContent = translations[currentLang]['admin.upload.desc'];
-        cardDescs[3].textContent = translations[currentLang]['admin.settings.desc'];
+        addDebugInfo("用户已登录");
+        
+        // 检查数据同步状态
+        checkFrontendData();
+        updateSyncStatusDisplay();
+      } else {
+        // 未登录，显示登录表单
+        addDebugInfo("等待用户登录");
       }
-    }
+      
+      // 登录表单提交事件
+      document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        if (adminLogin(username, password)) {
+          document.getElementById('loginPanel').style.display = 'none';
+          document.getElementById('adminMenu').classList.add('active');
+          document.getElementById('syncPanel').style.display = 'block';
+          
+          // 登录成功后检查数据
+          checkFrontendData();
+          updateSyncStatusDisplay();
+          
+          showAdminAlert("登录成功", "success");
+          addDebugInfo("登录成功");
+        } else {
+          showLoginError("用户名或密码错误");
+          addDebugInfo("登录失败: 用户名或密码错误");
+        }
+      });
+      
+      // 数据同步按钮事件
+      document.getElementById('syncDataButton').addEventListener('click', function() {
+        syncFrontendData();
+      });
+      
+      // 初始化语言切换按钮
+      const toggleLangButton = document.getElementById('toggleLang');
+      if (toggleLangButton) {
+        toggleLangButton.addEventListener('click', function() {
+          const currentLang = localStorage.getItem('locale') || 'zh';
+          const newLang = currentLang === 'zh' ? 'en' : 'zh';
+          localStorage.setItem('locale', newLang);
+          
+          // 更新按钮文本
+          toggleLangButton.textContent = newLang === 'zh' ? 'English' : '中文';
+          
+          addDebugInfo(`语言切换为: ${newLang}`);
+        });
+      }
+    });
   </script>
 </body>
 </html> 
