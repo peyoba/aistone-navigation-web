@@ -2,9 +2,9 @@ import { useCallback } from 'react';
 
 // 简易翻译函数
 export const useTranslation = (locale: string, translations: Record<string, any>) => {
-  const t = useCallback((key: string) => {
+  const t = useCallback((key: string): string => {
     const keys = key.split('.');
-    let result = translations;
+    let result: any = translations;
     
     for (const k of keys) {
       if (result[k] === undefined) {
@@ -12,6 +12,11 @@ export const useTranslation = (locale: string, translations: Record<string, any>
         return key;
       }
       result = result[k];
+    }
+    
+    if (typeof result !== 'string') {
+      console.warn(`Translation result is not a string for key: ${key}`);
+      return key;
     }
     
     return result;
