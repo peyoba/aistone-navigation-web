@@ -46,11 +46,113 @@
     </main>
     
     <footer>
-      <p>&copy; 2025 AI Stone Navigation - 所有游戏版权归各自开发者所有</p>
+      <p>&copy; 2024 AI Stone Navigation - 所有游戏版权归各自开发者所有</p>
     </footer>
   </div>
   
   <script>
+    // 内嵌游戏数据（不依赖外部JSON文件）
+    const gamesData = {
+      "games": [
+        {
+          "id": "2048",
+          "title": {
+            "en": "2048",
+            "zh": "2048数字方块"
+          },
+          "description": {
+            "en": "Join the numbers and get to the 2048 tile!",
+            "zh": "合并相同数字，获得2048方块！"
+          },
+          "iframeUrl": "https://play2048.co",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "puzzle",
+          "active": true,
+          "dateAdded": "2023-06-01T12:00:00Z"
+        },
+        {
+          "id": "minesweeper",
+          "title": {
+            "en": "Minesweeper",
+            "zh": "扫雷"
+          },
+          "description": {
+            "en": "Find all mines without triggering any of them.",
+            "zh": "找出所有地雷，但不要触发它们。"
+          },
+          "iframeUrl": "https://minesweeper.online",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "puzzle",
+          "active": true,
+          "dateAdded": "2023-06-05T12:00:00Z"
+        },
+        {
+          "id": "tetris",
+          "title": {
+            "en": "Tetris",
+            "zh": "俄罗斯方块"
+          },
+          "description": {
+            "en": "Arrange falling blocks to create and destroy horizontal lines.",
+            "zh": "排列下落的方块，创建并消除水平线。"
+          },
+          "iframeUrl": "https://tetris.com/play-tetris",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "puzzle",
+          "active": true,
+          "dateAdded": "2023-06-03T12:00:00Z"
+        },
+        {
+          "id": "snake",
+          "title": {
+            "en": "Snake",
+            "zh": "贪吃蛇"
+          },
+          "description": {
+            "en": "Control a snake to eat food and avoid hitting walls or itself.",
+            "zh": "控制蛇吃食物，避免撞到墙壁或自身。"
+          },
+          "iframeUrl": "https://playsnake.org",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "action",
+          "active": true,
+          "dateAdded": "2023-06-04T12:00:00Z"
+        },
+        {
+          "id": "flappybird",
+          "title": {
+            "en": "Flappy Bird",
+            "zh": "飞扬的小鸟"
+          },
+          "description": {
+            "en": "Control the bird to fly through pipes without hitting them.",
+            "zh": "控制小鸟飞行，避开水管障碍物。"
+          },
+          "iframeUrl": "https://flappybird.io",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "action",
+          "active": true,
+          "dateAdded": "2023-06-02T12:00:00Z"
+        },
+        {
+          "id": "pacman",
+          "title": {
+            "en": "Pacman",
+            "zh": "吃豆人"
+          },
+          "description": {
+            "en": "Navigate Pacman through a maze, eating dots and avoiding ghosts.",
+            "zh": "引导吃豆人穿过迷宫，吃掉豆子并避开幽灵。"
+          },
+          "iframeUrl": "https://pacman.live",
+          "thumbnail": "/images/placeholder.jpg",
+          "category": "action",
+          "active": true,
+          "dateAdded": "2023-06-06T12:00:00Z"
+        }
+      ]
+    };
+    
     // 全局变量
     let games = [];
     let favorites = [];
@@ -151,14 +253,8 @@
           return;
         }
         
-        // 加载游戏数据
-        const response = await fetch('/data/games.json');
-        if (!response.ok) {
-          throw new Error('无法加载游戏数据');
-        }
-        
-        const data = await response.json();
-        games = data.games;
+        // 使用内嵌数据加载游戏
+        games = gamesData.games;
         
         // 渲染收藏的游戏
         renderFavorites();

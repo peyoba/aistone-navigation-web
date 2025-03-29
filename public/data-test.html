@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据文件测试</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f8fa;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #2563eb;
+    }
+    .test-btn {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    .result {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #f0f4f8;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+    .success {
+      color: green;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>数据文件测试</h1>
+    
+    <div>
+      <h2>1. 测试游戏数据文件</h2>
+      <button id="testGames" class="test-btn">测试games.json</button>
+      <div id="gamesResult" class="result"></div>
+    </div>
+    
+    <div>
+      <h2>2. 测试分类数据文件</h2>
+      <button id="testCategories" class="test-btn">测试categories.json</button>
+      <div id="categoriesResult" class="result"></div>
+    </div>
+    
+    <div>
+      <h2>3. 测试特定路径</h2>
+      <input type="text" id="customPath" placeholder="输入路径，例如: /data/games.json" style="width: 300px; padding: 8px; margin-right: 5px;">
+      <button id="testCustomPath" class="test-btn">测试路径</button>
+      <div id="customResult" class="result"></div>
+    </div>
+    
+    <div style="margin-top: 20px;">
+      <a href="/" style="color: #2563eb;">返回首页</a>
+    </div>
+  </div>
+  
+  <script>
+    // 测试games.json
+    document.getElementById('testGames').addEventListener('click', async () => {
+      const result = document.getElementById('gamesResult');
+      result.innerHTML = '正在测试...';
+      
+      try {
+        // 尝试相对路径
+        const response = await fetch('/data/games.json');
+        const status = response.status;
+        
+        if (!response.ok) {
+          result.innerHTML = `<span class="error">❌ 加载失败! 状态码: ${status}</span>`;
+          return;
+        }
+        
+        const data = await response.json();
+        result.innerHTML = `<span class="success">✅ 成功! 加载了 ${data.games ? data.games.length : 0} 个游戏</span>\n\n数据预览:\n${JSON.stringify(data, null, 2).slice(0, 200)}...`;
+      } catch (error) {
+        result.innerHTML = `<span class="error">❌ 错误: ${error.message}</span>`;
+      }
+    });
+    
+    // 测试categories.json
+    document.getElementById('testCategories').addEventListener('click', async () => {
+      const result = document.getElementById('categoriesResult');
+      result.innerHTML = '正在测试...';
+      
+      try {
+        // 尝试相对路径
+        const response = await fetch('/data/categories.json');
+        const status = response.status;
+        
+        if (!response.ok) {
+          result.innerHTML = `<span class="error">❌ 加载失败! 状态码: ${status}</span>`;
+          return;
+        }
+        
+        const data = await response.json();
+        result.innerHTML = `<span class="success">✅ 成功! 加载了 ${data.categories ? data.categories.length : 0} 个分类</span>\n\n数据预览:\n${JSON.stringify(data, null, 2)}`;
+      } catch (error) {
+        result.innerHTML = `<span class="error">❌ 错误: ${error.message}</span>`;
+      }
+    });
+    
+    // 测试自定义路径
+    document.getElementById('testCustomPath').addEventListener('click', async () => {
+      const path = document.getElementById('customPath').value;
+      const result = document.getElementById('customResult');
+      
+      if (!path) {
+        result.innerHTML = '<span class="error">❌ 请输入路径</span>';
+        return;
+      }
+      
+      result.innerHTML = `正在测试路径: ${path}...`;
+      
+      try {
+        const response = await fetch(path);
+        const status = response.status;
+        const contentType = response.headers.get('content-type');
+        
+        if (!response.ok) {
+          result.innerHTML = `<span class="error">❌ 加载失败! 状态码: ${status}</span>`;
+          return;
+        }
+        
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          result.innerHTML = `<span class="success">✅ 成功加载JSON! 大小: ${JSON.stringify(data).length} 字节</span>\n\n数据预览:\n${JSON.stringify(data, null, 2).slice(0, 500)}...`;
+        } else {
+          const text = await response.text();
+          result.innerHTML = `<span class="success">✅ 成功加载! 内容类型: ${contentType || '未知'}, 大小: ${text.length} 字节</span>\n\n内容预览:\n${text.slice(0, 500)}...`;
+        }
+      } catch (error) {
+        result.innerHTML = `<span class="error">❌ 错误: ${error.message}</span>`;
+      }
+    });
+  </script>
+</body>
+</html> 

@@ -92,6 +92,167 @@ const fallbackCategories = [
   }
 ];
 
+// 内置数据（不再依赖外部JSON文件）
+const gamesData = {
+  "games": [
+    {
+      "id": "2048",
+      "title": {
+        "en": "2048",
+        "zh": "2048数字方块"
+      },
+      "description": {
+        "en": "Join the numbers and get to the 2048 tile!",
+        "zh": "合并相同数字，获得2048方块！"
+      },
+      "iframeUrl": "https://play2048.co",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "puzzle",
+      "active": true,
+      "dateAdded": "2023-06-01T12:00:00Z"
+    },
+    {
+      "id": "minesweeper",
+      "title": {
+        "en": "Minesweeper",
+        "zh": "扫雷"
+      },
+      "description": {
+        "en": "Find all mines without triggering any of them.",
+        "zh": "找出所有地雷，但不要触发它们。"
+      },
+      "iframeUrl": "https://minesweeper.online",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "puzzle",
+      "active": true,
+      "dateAdded": "2023-06-05T12:00:00Z"
+    },
+    {
+      "id": "tetris",
+      "title": {
+        "en": "Tetris",
+        "zh": "俄罗斯方块"
+      },
+      "description": {
+        "en": "Arrange falling blocks to create and destroy horizontal lines.",
+        "zh": "排列下落的方块，创建并消除水平线。"
+      },
+      "iframeUrl": "https://tetris.com/play-tetris",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "puzzle",
+      "active": true,
+      "dateAdded": "2023-06-03T12:00:00Z"
+    },
+    {
+      "id": "snake",
+      "title": {
+        "en": "Snake",
+        "zh": "贪吃蛇"
+      },
+      "description": {
+        "en": "Control a snake to eat food and avoid hitting walls or itself.",
+        "zh": "控制蛇吃食物，避免撞到墙壁或自身。"
+      },
+      "iframeUrl": "https://playsnake.org",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "action",
+      "active": true,
+      "dateAdded": "2023-06-04T12:00:00Z"
+    },
+    {
+      "id": "flappybird",
+      "title": {
+        "en": "Flappy Bird",
+        "zh": "飞扬的小鸟"
+      },
+      "description": {
+        "en": "Control the bird to fly through pipes without hitting them.",
+        "zh": "控制小鸟飞行，避开水管障碍物。"
+      },
+      "iframeUrl": "https://flappybird.io",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "action",
+      "active": true,
+      "dateAdded": "2023-06-02T12:00:00Z"
+    },
+    {
+      "id": "pacman",
+      "title": {
+        "en": "Pacman",
+        "zh": "吃豆人"
+      },
+      "description": {
+        "en": "Navigate Pacman through a maze, eating dots and avoiding ghosts.",
+        "zh": "引导吃豆人穿过迷宫，吃掉豆子并避开幽灵。"
+      },
+      "iframeUrl": "https://pacman.live",
+      "thumbnail": "/images/placeholder.jpg",
+      "category": "action",
+      "active": true,
+      "dateAdded": "2023-06-06T12:00:00Z"
+    }
+  ]
+};
+
+const categoriesData = {
+  "categories": [
+    {
+      "id": "all",
+      "name": {
+        "en": "All Games",
+        "zh": "所有游戏"
+      },
+      "order": 0,
+      "active": true
+    },
+    {
+      "id": "action",
+      "name": {
+        "en": "Action",
+        "zh": "动作游戏"
+      },
+      "order": 1,
+      "active": true
+    },
+    {
+      "id": "puzzle",
+      "name": {
+        "en": "Puzzle",
+        "zh": "益智游戏"
+      },
+      "order": 2,
+      "active": true
+    },
+    {
+      "id": "adventure",
+      "name": {
+        "en": "Adventure",
+        "zh": "冒险游戏"
+      },
+      "order": 3,
+      "active": true
+    },
+    {
+      "id": "strategy",
+      "name": {
+        "en": "Strategy",
+        "zh": "策略游戏"
+      },
+      "order": 4,
+      "active": true
+    },
+    {
+      "id": "sports",
+      "name": {
+        "en": "Sports",
+        "zh": "体育游戏"
+      },
+      "order": 5,
+      "active": true
+    }
+  ]
+};
+
 // DOM加载完成后执行
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('页面加载完成，开始初始化...');
@@ -168,39 +329,13 @@ function getStoredLanguage() {
  */
 async function loadData() {
   try {
-    console.log('开始加载数据...');
+    console.log('开始加载内置数据...');
     
     // 显示加载状态
     document.getElementById('loading').style.display = 'block';
     document.getElementById('gameGrid').style.display = 'none';
     
-    // 加载游戏数据
-    console.log('尝试加载games.json...');
-    const gamesResponse = await fetch('/data/games.json');
-    
-    if (!gamesResponse.ok) {
-      console.error('games.json加载失败:', gamesResponse.status, gamesResponse.statusText);
-      throw new Error(`游戏数据加载失败 (${gamesResponse.status})`);
-    }
-    
-    console.log('尝试解析games.json...');
-    const gamesData = await gamesResponse.json();
-    console.log('游戏数据加载成功:', gamesData);
-    
-    // 加载分类数据
-    console.log('尝试加载categories.json...');
-    const categoriesResponse = await fetch('/data/categories.json');
-    
-    if (!categoriesResponse.ok) {
-      console.error('categories.json加载失败:', categoriesResponse.status, categoriesResponse.statusText);
-      throw new Error(`分类数据加载失败 (${categoriesResponse.status})`);
-    }
-    
-    console.log('尝试解析categories.json...');
-    const categoriesData = await categoriesResponse.json();
-    console.log('分类数据加载成功:', categoriesData);
-    
-    // 设置数据
+    // 直接使用内置数据
     games = gamesData.games;
     categories = categoriesData.categories;
     
