@@ -175,6 +175,70 @@
     </div>
   </div>
   
+  <script>
+    // 定义管理员登录函数，确保在全局范围内可用
+    function adminLogin(username, password) {
+      // 简单的验证逻辑，实际项目中应使用更安全的身份验证方式
+      if (username === 'admin' && password === 'password') {
+        localStorage.setItem('adminLoggedIn', 'true');
+        return true;
+      }
+      return false;
+    }
+    
+    // 显示提醒消息
+    function showAdminAlert(message, type = 'info') {
+      // 创建警告元素
+      const alertEl = document.createElement('div');
+      alertEl.style.position = 'fixed';
+      alertEl.style.top = '20px';
+      alertEl.style.right = '20px';
+      alertEl.style.padding = '10px 15px';
+      alertEl.style.borderRadius = '4px';
+      alertEl.style.zIndex = '1000';
+      alertEl.textContent = message;
+      
+      // 设置不同类型的样式
+      if (type === 'success') {
+        alertEl.style.backgroundColor = '#ecfdf5';
+        alertEl.style.color = '#065f46';
+        alertEl.style.border = '1px solid #a7f3d0';
+      } else if (type === 'danger') {
+        alertEl.style.backgroundColor = '#fee2e2';
+        alertEl.style.color = '#b91c1c';
+        alertEl.style.border = '1px solid #f87171';
+      } else if (type === 'warning') {
+        alertEl.style.backgroundColor = '#fffbeb';
+        alertEl.style.color = '#92400e';
+        alertEl.style.border = '1px solid #fcd34d';
+      } else {
+        alertEl.style.backgroundColor = '#eff6ff';
+        alertEl.style.color = '#1e40af';
+        alertEl.style.border = '1px solid #bfdbfe';
+      }
+      
+      // 添加关闭按钮
+      const closeBtn = document.createElement('span');
+      closeBtn.style.marginLeft = '10px';
+      closeBtn.style.cursor = 'pointer';
+      closeBtn.innerHTML = '&times;';
+      closeBtn.onclick = function() {
+        document.body.removeChild(alertEl);
+      };
+      alertEl.appendChild(closeBtn);
+      
+      // 添加到页面
+      document.body.appendChild(alertEl);
+      
+      // 5秒后自动关闭
+      setTimeout(() => {
+        if (document.body.contains(alertEl)) {
+          document.body.removeChild(alertEl);
+        }
+      }, 5000);
+    }
+  </script>
+  
   <script src="/js/app.js"></script>
   <script src="/js/admin.js"></script>
   <script>
